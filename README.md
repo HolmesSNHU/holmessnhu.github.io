@@ -1,2 +1,3 @@
-# holmessnhu.github.io
-CS-499 Capstone Github Page
+Jason Holmes
+CS-499 - Computer Science Capstone
+Github Page for 1-2 ePortfolio (and the future)
