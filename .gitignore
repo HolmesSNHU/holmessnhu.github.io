@@ -1,0 +1,3 @@
+*.log
+*Log.*
+*/diagnostic.data/
