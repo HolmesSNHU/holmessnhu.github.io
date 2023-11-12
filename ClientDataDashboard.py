@@ -197,7 +197,7 @@ def update_dashboard(filter_type):
         }))
         
         # Using a similar action as the RMDs editing columns, we can drop irrelevant details.
-        df.drop(columns=['rmd_amount'], inplace=True)
+        # df.drop(columns=['rmd_amount'], inplace=True)
     
     # Required Minimum Distributions
     elif filter_type == "RMDs":
@@ -208,9 +208,9 @@ def update_dashboard(filter_type):
         
         # This would be enough if we just wanted to display the matching accounts, but I want to do more.
         # To add an "RMD Met?" column, we can just add one.
-        df["RMD Met?"] = np.where(df['rmd_amount'] <= df['ytd_distributions'],"TRUE","NOT MET")
+        # df["RMD Met?"] = np.where(df['rmd_amount'] <= df['ytd_distributions'],"TRUE","NOT MET")
         # We can also drop the irrelevant column(s).
-        df.drop(columns=['days_since_last_review'], inplace=True)
+        # df.drop(columns=['days_since_last_review'], inplace=True)
         
     # Overdue Reviews - accounts with days_since_last_review over 365.
     # However, days_since_last_review is best as a derived value, so it isn't stored.
