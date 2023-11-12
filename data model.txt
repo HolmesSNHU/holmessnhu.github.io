@@ -1,9 +1,9 @@
 Non-Retirement Account Data Model
 {
-  "account_id": "unique account identifier",
+  "_id": "unique account identifier",
   "client_id": "unique client identifier",
   "account_nickname": "descriptive name",
-  "account_type": "retirement or non-retirement",
+  "account_class": "retirement or non-retirement",
   "account_value": "total account value",
   "cash_available": "total liquid cash amount",
   "ytd_distributions": "total distributions year-to-date",
@@ -11,11 +11,10 @@ Non-Retirement Account Data Model
 
 Retirement Account Data Model
 {
-  "account_id": "unique account identifier",
+  "_id": "unique account identifier",
   "client_id": "unique client identifier",
-  "last_update": "timestamp of last update",
   "account_nickname": "descriptive name",
-  "account_type": "retirement or non-retirement",
+  "account_class": "retirement or non-retirement",
   "account_value": "total account value",
   "cash_available": "total liquid cash amount",
   "ytd_distributions": "total distributions year-to-date",
@@ -24,7 +23,7 @@ Retirement Account Data Model
 
 Client Data Model
 {
-	"client_id": "unique client identifier",
+	"_id": "unique client identifier",
 	"first_name": "client's first name",
 	"last_name": "client's last name",
 	"date_of_birth": "client's date of birth",

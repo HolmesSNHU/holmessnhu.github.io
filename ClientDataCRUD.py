@@ -5,7 +5,7 @@ from pymongo import MongoClient
 from pymongo import errors
 from bson.objectid import ObjectId
 
-class AnimalShelter(object):
+class ClientDataCRUD(object):
     """ CRUD operations for CS499_client_database in MongoDB """
 
     def __init__(self, inputUser=None, inputPass=None):
@@ -28,7 +28,7 @@ class AnimalShelter(object):
         HOST = 'localhost'
         PORT = 27017
         DB = 'CS499_client_database'
-        # COL = 'animals'
+        # COL = 'accounts'
         
         #
         # Initialize Connection
@@ -36,8 +36,12 @@ class AnimalShelter(object):
         
         # Make sure to follow industry standards with the implementation by adding exception handling and inline comments.
         try:
-            self.client = MongoClient('mongodb://%s:%s@%s:%d' % (USER,PASS,HOST,PORT))
+            self.client = MongoClient('mongodb://%s:%s@%s:%d/%s' % (USER,PASS,HOST,PORT,DB))
             self.database = self.client['%s' % (DB)]
+            if self.database is not None:
+                print(f"Connected to database: {DB}")
+            else:
+                print(f"Failed to connected to the {DB} database.")
             # self.collection = self.database['%s' % (COL)]         # Commenting this out since we'll be setting it later.
         
         except errors.ConnectionError as connectionError:
@@ -46,13 +50,15 @@ class AnimalShelter(object):
             print(f"An unexpected exception occurred while connecting to the database: {exception}")
 
 # Complete this create method to implement the C in CRUD.
-    def create(self, collection, data):
+    def create(self, collectionName, data):
         # First, validate that the 'data' is present and 'collection' has been designated
-        if data is not None and collection is not None:
+        if data is not None and collectionName is not None:
             
             # Then attempt to insert it into the database.
             try:
-                insertResult = self.database.collection.insert_one(data)  # data should be dictionary
+                collection = self.database[collectionName]
+                print(f"Attempting to access the collection: {collection}")
+                insertResult = collection.insert_one(data)  # data should be dictionary
                 # If successful, explicitly acknowledge success.
                 if insertResult.acknowledged:
                     print("Insertion acknowledged by server.")
@@ -71,13 +77,15 @@ class AnimalShelter(object):
             return False
 
 # Create method to implement the R in CRUD.
-    def read(self, collection, data):
+    def read(self, collectionName, data):
         # First, validate that the 'data' is present.
-        if data is not None and collection is not None:
+        if data is not None and collectionName is not None:
             # Then attempt to read the requested data from the database.
             try:
+                collection = self.database[collectionName]
+                print(f"Attempting to access collection: {collection}")
                 # This should return a list that either contains the results or is empty
-                return [entry for entry in self.database.collection.find(data)]
+                return [entry for entry in collection.find(data)]
             
             except errors.OperationFailure as operationFailure:
                 print(f"Operation failure: {operationFailure}")
@@ -91,15 +99,16 @@ class AnimalShelter(object):
             return []
         
 # Create method to implement the U in CRUD.
-    def update(self, collection, target, updatedData):
+    def update(self, collectionName, target, updatedData):
         # First, validate that the incoming data is present.
-        if target is not None and updatedData is not None and collection is not None:
+        if target is not None and updatedData is not None and collectionName is not None:
             
             # Then find the record(s) we need to update.
             targetRecords = None
             try:
+                collection = self.database[collectionName]
                 # This should put a cursor into targetRecords that contains the matches to iterate through, if any
-                targetRecords = self.database.collection.find(target)
+                targetRecords = collection.find(target)
                 
             except errors.OperationFailure as operationFailure:
                 print(f"Operation failure while locating records: {operationFailure}")
@@ -112,7 +121,7 @@ class AnimalShelter(object):
             try:
                 # Iterate through the matches and update accordingly.
                 if targetRecords.count() > 0:
-                    updateResult = self.database.collection.update_many(target, {"$set": updatedData})
+                    updateResult = collection.update_many(target, {"$set": updatedData})
                     
                     # If the update is successful, explicitly confirm that.
                     if updateResult.acknowledged:
@@ -136,15 +145,16 @@ class AnimalShelter(object):
             return 0
 
 # Create method to implement the D in CRUD.
-    def delete(self, collection, target):
+    def delete(self, collectionName, target):
         # First, validate that the 'target' is present.
-        if target is not None and collection is not None:
+        if target is not None and collectionName is not None:
             # Then confirm that 'target' is in the database.
-            targetExists = self.database.collection.find_one(target)
+            collection = self.database[collectionName]
+            targetExists = collection.find_one(target)
             
             # If 'target' is in the database, purge it.
             if targetExists:
-                deleteResult = self.database.collection.delete_one(target)
+                deleteResult = collection.delete_one(target)
                 if deleteResult.acknowledged:
                     print(f"{deleteResult.deleted_count} record(s) deleted successfully.")
                     # Return -> The number of objects removed from the collection.
