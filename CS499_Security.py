@@ -31,7 +31,7 @@ class SecurityLayer:
         self.loginFailureThreshold = 5      # Number of failed login attempts before account is locked
         self.sessionLifespan = 600          # Lifespan of session in seconds since last activity. Also used for account lockouts.
         self.tokenSize = 32                 # Number of bytes that a security token should contain. 32 should be adequate for our purposes.
-        
+                
         # Store active user sessions in a local dictionary.
         # <IMPROVEMENT>: A more robust database-centric solution would improve scaling and usability.
         self.activeSessions = {}
@@ -53,25 +53,116 @@ class SecurityLayer:
             return
         
         # Establish a collection shortcut for later use
-        COL = config.get("ClientDB", "COL")
+        collectionName = self.config.get("ClientDB", "COL")
         try:
-            self.collection = self.database['%s' % (COL)]
+            self.collection = self.database[collectionName]
             
             # Verify the connection was successful.
             if self.collection is not None:
-                print(f"Connected to collection: {COL}")
+                print(f"Connected to collection: {collectionName}, data type {type(self.collection)}")
             else:
-                print(f"Failed to connect to the {COL} collection.")
+                print(f"Failed to connect to the {collectionName} collection.")
                 return
             
             # Establish a collection shortcut for later use.
         
-        except errors.ConnectionError as e:     # Thrown for connection errors
+        except errors.ConnectionFailure as e:     # Thrown for connection errors
             print(f"Connection error: {e}")
             return
         except Exception as e:                  # Catch-all
             print(f"An unexpected exception occurred while connecting to the collection: {e}")
             return
+                
+    # EXTREMELY BASIC, temporary unit tests for functionality testing.
+    def RunTests(self):
+    
+        print("Running tests.")
+        print("Test 0: Adding test user...")
+        # Temporary testing variables.
+        self.tempUsername = "admin"
+        self.tempPassword = "root"
+        self.AddTestUser(self.tempUsername, self.tempPassword)
+        
+        print("Test 1: Testing user verification...")
+        verifiedUser = self.VerifyUser(self.tempUsername)
+        if verifiedUser:
+            print(f"Verification passed for {self.tempUsername}")
+        else:
+            print(f"Verification failed for {self.tempUsername}")
+        
+        print("Test 2: Testing password hashing...")
+        hashedPassword = self.HashPassword(self.tempPassword)
+        if self.VerifyPassword(hashedPassword, verifiedUser.get("hashed_password")):
+            print(f"Hashed password verification passed for {self.tempUsername}")
+        else:
+            print(f"Hashed password verification failed for {self.tempUsername}")
+            
+        print("Test 3: Testing authentication...")
+        authenticated = self.AuthenticateUser(self.tempUsername, self.tempPassword)
+        if authenticated:
+            print(f"Authentication passed for {self.tempUsername}")
+        else:
+            print(f"Authentication failed for {self.tempUsername}")
+            
+        print("Test 4: Testing session generation...")
+        session = self.LoginSuccess(self.tempUsername)
+        if session:
+            print(f"Session generation passed for {self.tempUsername}")
+            print(f"Session details: UUID: '{session['UUID']}', token: '{session['token']}'")
+        else:
+            print(f"Session generation failed for {self.tempUsername}")
+            
+        print("Test 5: Testing session validation...")
+        sessionValidated = self.ValidateSession(session["UUID"], session["token"])
+        if sessionValidated:
+            print(f"Session Authentication passed for {self.tempUsername}")
+        else:
+            print(f"Session Authentication failed for {self.tempUsername}")
+            
+        print("Test 6: Testing account lock...")
+        self.AccountLock(self.tempUsername, True)
+        verifiedUser = self.VerifyUser(self.tempUsername)
+        locked = self.GetAccountLocked(verifiedUser)
+        if locked:
+            print(f"Account locking passed for {self.tempUsername}")
+        else:
+            print(f"Account locking failed for {self.tempUsername}")
+            
+        print("Test 7: Testing account unlock...")
+        self.AccountLock(self.tempUsername, False)
+        verifiedUser = self.VerifyUser(self.tempUsername)
+        locked = self.GetAccountLocked(verifiedUser)
+        if not locked:
+            print(f"Account unlocking passed for {self.tempUsername}")
+        else:
+            print(f"Account unlocking failed for {self.tempUsername}")
+    
+    # TEMPORARY FUNCTION FOR TESTING ONLY
+    def AddTestUser(self, username, password):
+        userExists = self.VerifyUser(username)
+        if (userExists):
+            print(f"Test user {username} already exists. No need to add again. Skipping.")
+            return
+            
+        hashed_password = self.HashPassword(password)
+        
+        if hashed_password:
+            tempUser = {
+                "username": username,
+                "hashed_password": hashed_password,
+                "role": "readWrite",
+                "isLocked": False,
+                "lastLoginAttempt": datetime.datetime.now(),
+                "recentFailedAttempts": 0
+            }
+            
+            try:
+                self.collection.insert_one(tempUser)
+                print(f"User '{username}' added successfully.")
+            except Exception as e:
+                print(f"Failed to add user '{username}' during AddTestUser: {e}")
+        else:
+            print(f"Failed to hash password for user '{username}'")
     
     # Loads the login credentials from the configFile.
     # This primarily occurs during initialization but it is separated into its own function for maintainability and encapsulation.
@@ -121,17 +212,17 @@ class SecurityLayer:
         
         # Connect to MongoDB using those credentials.
         try:
-            database = MongoClient('mongodb://%s:%s@%s:%d/%s' % (USER,PASS,HOST,PORT,DB))
+            database = MongoClient('mongodb://%s:%s@%s:%d/%s' % (USER,PASS,HOST,PORT,DB))[DB]
             
             # Verify success, then return the database for use.
             if database is not None:
-                print(f"Connected to database: {DB}")
+                print(f"Connected to database: {DB}, type {type(database)}")
                 return database
             else:
                 print(f"Failed to connected to the {DB} database.")
                 return None
             
-        except errors.ConnectionError as e:     # Thrown if there is some kind of connection error.
+        except errors.ConnectionFailure as e:     # Thrown if there is some kind of connection error.
             print(f"Failed to connect to MongoDB: {e}")
             return None
         except Exception as e:          # Catch-all.
@@ -160,7 +251,6 @@ class SecurityLayer:
         if self.GetAccountLocked(user):
             print(f"Login attempt for {username} failed; account is locked.")
             return False
-            
         
         # Hash the supplied password using SHA-256
         hashedPassword = self.HashPassword(password)
@@ -209,9 +299,9 @@ class SecurityLayer:
     # Function to verify password hashes match using hashlib.
     def VerifyPassword(self, inputPasswordHash, storedPasswordHash):
         
-        # Hashlib provides a secure comparison function to protect the intrinsic information about the passwords.
+        # Secrets provides a secure comparison function to protect the intrinsic information about the passwords.
         # This function takes two hashes and returns a boolean based on their comparison, so we can pass that straight on.
-        match = hashlib.compare_digest(inputPasswordHash, storedPasswordHash)
+        match = secrets.compare_digest(inputPasswordHash, storedPasswordHash)
         return match
         
         
@@ -223,11 +313,10 @@ class SecurityLayer:
                 
         # Firstly, a successful login attempt should clear the recent failures.
         # We'll update the last login attempt at the same time just for completeness's sake.
-        try:
-            self.UpdateDatabase(username, { 
-                        "recentFailedAttempts" : 0,
-                        "lastLoginAttempt": datetime.now()
-                    })
+        self.UpdateDatabase(username, { 
+                    "recentFailedAttempts" : 0,
+                    "lastLoginAttempt": datetime.datetime.now()
+                })
         
         # Second, generate an active session for the user and return it.
         return self.GenerateActiveSession(username)
@@ -239,7 +328,7 @@ class SecurityLayer:
         
         # First, check to see if the user is currently locked. If it isn't, we can carry on as normal.
         accountLocked = user.get("isLocked")
-        if accountLocked is False:
+        if not accountLocked:
             return False
             
         # Store the username for future use.
@@ -248,7 +337,7 @@ class SecurityLayer:
         # Since the account is locked, first check to see when the last login attempt took place. If it's beyond the lockout duration, we can unlock it.
         lastLoginAttempt = user.get("lastLoginAttempt")
         # Subtracting two datetime objects results in a timedelta object, which lets us pull total_seconds() directly.
-        if (datetime.now() - lastLoginAttempt).total_seconds() > self.sessionLifespan:
+        if (datetime.datetime.now() - lastLoginAttempt).total_seconds() > self.sessionLifespan:
             # If it's been longer than the session lifespan, unlock the account and return that there is no lock.
             self.AccountLock(username, False)
             return False
@@ -274,7 +363,7 @@ class SecurityLayer:
         # A failed login attempt should increment the recent failed attempts and last login attempt time.
         self.UpdateDatabase(username, { 
                         "recentFailedAttempts" : recentFailedAttempts,
-                        "lastLoginAttempt": datetime.now()
+                        "lastLoginAttempt": datetime.datetime.now()
                     })
         
         # Check against threshold
@@ -295,7 +384,7 @@ class SecurityLayer:
         # We have the first one, so we need to generate the last two.
         
         # Generate an initial lastActivity timestamp.
-        lastActivity = datetime.now()
+        lastActivity = datetime.datetime.now()
         
         # Generate a security token.
         securityToken = self.GenerateSecurityToken()
@@ -312,8 +401,8 @@ class SecurityLayer:
         }
         self.activeSessions[sessionID] = sessionData
         
-        # Finally, return the security token for transmission to the user and local storage.
-        return securityToken
+        # Finally, return the relevant session details for transmission to the user and local storage.
+        return {"UUID": sessionID, "token": securityToken}
     
     # Function to generate a unique user ID for each session. It's just a numeric ID so it should mesh well for data structure and database purposes.
     def GenerateUUID(self):
@@ -340,10 +429,10 @@ class SecurityLayer:
             
             # The session exists at this point. Get a reference to the session and current time since we'll be using both a few times.
             session = self.activeSessions[UUID]
-            currentTime = datetime.now()
+            currentTime = datetime.datetime.now()
             
             # Confirm the UUID has not yet expired. If it has, end the session and reject validation.
-            if (currentTime - session["lastActive"]) > self.sessionLifespan:
+            if (currentTime - session["lastActive"]).total_seconds() > self.sessionLifespan:
                 self.EndActiveSession(UUID)
                 return False
                 

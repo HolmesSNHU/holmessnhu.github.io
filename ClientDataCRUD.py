@@ -44,7 +44,7 @@ class ClientDataCRUD(object):
                 print(f"Failed to connect to the {DB} database.")
             # self.collection = self.database['%s' % (COL)]         # Commenting this out since we'll be setting it later.
         
-        except errors.ConnectionError as connectionError:
+        except errors.ConnectionFailure as connectionError:
             print(f"Connection error: {connectionError}")
         except Exception as exception:
             print(f"An unexpected exception occurred while connecting to the database: {exception}")

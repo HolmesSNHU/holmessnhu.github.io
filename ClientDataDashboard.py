@@ -87,6 +87,9 @@ except Exception as exception:
 # print(df.columns)
 
 
+# Open a SecurityLayer instance. More significant adjustments will be necessary to fully implement logins.
+# security = SecurityLayer()
+
 #########################
 # Dashboard Layout / View
 #########################
