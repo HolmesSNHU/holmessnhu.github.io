@@ -25,7 +25,11 @@ import configparser # For parsing the configuration file
 
 class SecurityLayer:
     def __init__ (self):
-          
+        
+        # Store some default values for login and session management.
+        self.loginFailureThreshold = 5      # Number of failed login attempts before account is locked
+        self.sessionLifespan = 600          # Lifespan of session in seconds since last activity. Also used for account lockouts.
+        
         # Store active user sessions in a local dictionary.
         # <IMPROVEMENT>: A more robust database-centric solution would improve scaling and usability.
         self.activeSessions = {}
@@ -131,21 +135,162 @@ class SecurityLayer:
         else:
             print(f"Failed to connected to the {DB} database.")
             return None
-            
-    # On login attempt:
-        # Hash a password
-        # Retrieve password hash from database
-        # Authenticate a user against the login database
     
-    # On login success:
-        # Reset failure count
-        # Generate a security token
-    
-    # On login failure:
-        # Increment failed attempts
-        # Check against threshold
-        # Lock if threshold exceeded
+    # Function to authenticate a login attempt by verifying the provided credentials against the credentials stored in the database.
+    # Just provides a boolean authentication and the dashboard should call success or failure accordingly for session management purposes.
+    def AuthenticateUser(self, username, password):
         
+        # Verify user exists.
+        user = VerifyUser(username)
+        
+        # If they don't exist, reject the login attempt.
+        # Cannot trigger a LoginFailure() for the user since the user does not exist.
+        # <IMPROVEMENT> Expand the user session to include pre-login periods so that each IP address only has so many login attempts before they are locked out.
+        # <IMPROVEMENT> Communicate to the dashboard the reason why the login failed so the user can decide how to proceed.
+        if user is None:
+            print(f"Login attempt for {username} failed. No matching user.")
+            return False
+        
+        # Before we test the login credentials, check the account's locked status.
+        # <IMPROVEMENT> Communicate to the dashboard the reason why the login failed so the user can decide how to proceed.
+        if GetAccountLocked(user):
+            print(f"Login attempt for {username} failed; account is locked.")
+            return False
+            
+        
+        # Hash the supplied password using SHA-256
+        hashedPassword = HashPassword(password)
+        
+        # Retrieve the stored password hash from user data
+        storedPasswordHash = user.get("hashed_password")
+        
+        # Verify hashed credentials against each other.
+        # This will return a simple boolean result, so we can just return it directly.
+        # <IMPROVEMENT> Communicate to the dashboard the reason why the login failed (if it did) so the user can decide how to proceed.
+        return VerifyPassword(hashedPassword, storedPasswordHash):
+        
+    
+    # Function for verifying that a given user is present in the login database. If so, return the user data for use.
+    def VerifyUser(self, username):
+        
+        # Verify the user exists.
+        verifyUser = self.collection.find_one({"username": username})
+        if verifyUser:
+            # If so, return the user data for use.
+            return verifyUser
+        else:
+            # Otherwise, make a note in the log and move on.
+            print("Username not found.")
+            return None
+    
+    # Password hashing function for login attempts and registration
+    def HashPassword(self, password):
+        
+        # We'll use the SHA-256 algorithm from the hashlib library to handle this.
+        # <IMPROVEMENT> Implement salting prior to the hashing. Be sure to store the generated salt to the login database and update any existing logins accordingly.
+        try:
+            hashedPassword = hashlib.sha256(password.encode()).hexdigest()
+            
+            # Hashlib won't give us an error if the hashing fails so to verify that the hashing was successful, we check for the correct length.
+            if len(hashedPassword) != 64:
+                print("Password hashing failed.")
+                return None
+            else:
+                return hashedPassword
+            
+        except Exception as e:
+            print(f"Hashing error: {e}")
+            return None
+    
+    # Function to verify password hashes match using hashlib.
+    def VerifyPassword(self, inputPasswordHash, storedPasswordHash):
+        
+        # Hashlib provides a secure comparison function to protect the intrinsic information about the passwords.
+        # This function takes two hashes and returns a boolean based on their comparison, so we can pass that straight on.
+        match = hashlib.compare_digest(inputPasswordHash, storedPasswordHash)
+        return match
+        
+        
+    # Function for handling successful login attempts. Called by the dashboard after a successful AuthenticateUser
+    # Returns a security token.
+    def LoginSuccess(username):
+        
+        # A successful authentication requires that the user and their credentials have been verified, so we can skip straight to functionality.
+                
+        # Firstly, a successful login attempt should clear the recent failures.
+        # We'll update the last login attempt at the same time just for completeness's sake.
+        # <IMPROVEMENT> Move all update fields to a DatabaseUpdate(username, {field, value}) function.
+        self.collection.update_one("username": username, {
+            "$set": { "recentFailedAttempts" : 0,
+                      "lastLoginAttempt": datetime.now()
+            }
+        })
+        
+        # Second, generate a security token and return it.
+        return GenerateSecurityToken()
+    
+    def GenerateSecurityToken():
+    
+    # Function to handle account locking and unlocking.
+    # Accepts a database document of the user's information.
+    # Returns a boolean for whether the account is currently locked after processing is complete.
+    def GetAccountLocked(user):
+        
+        # First, check to see if the user is currently locked. If it isn't, we can carry on as normal.
+        accountLocked = user.get("isLocked")
+        if accountLocked is False:
+            return False
+            
+        # Store the username for future use.
+        username = user.get("username")
+        
+        # Since the account is locked, first check to see when the last login attempt took place. If it's beyond the lockout duration, we can unlock it.
+        lastLoginAttempt = user.get("lastLoginAttempt")
+        # Subtracting two datetime objects results in a timedelta object, which lets us pull total_seconds() directly.
+        if (datetime.now() - lastLoginAttempt).total_seconds() > self.sessionLifespan:
+            # If it's been longer than the session lifespan, unlock the account and return that there is no lock.
+            AccountLock(username, False)
+            return False
+        else:
+            # Otherwise, it's locked and this is a failed login attempt.
+            return True
+    
+    # Function for handling failed login attempts. Called by the dashboard after a failed AuthenticateUser
+    def LoginFailed(username):
+        
+        # There are situations where a login can fail but not be attributed to any specific user.
+        # Retrieve the user information.
+        user = VerifyUser(username)
+        
+        # if the user doesn't exist, we're done.
+        # <IMPROVEMENT> Expand the user session to include pre-login periods so that each IP address only has so many login attempts before they are locked out.
+        if user is None:
+            return
+        
+        # Otherwise, the user exists so we can use their data.
+        recentFailedAttempts = user.get("recentFailedAttempts", 0) + 1
+        
+        # A failed login attempt should increment the recent failed attempts and last login attempt time.
+        # <IMPROVEMENT> Move all update fields to a DatabaseUpdate(username, {field, value}) function.
+        self.collection.update_one("username": username, {
+            "$set": { "recentFailedAttempts" : recentFailedAttempts,
+                      "lastLoginAttempt": datetime.now()
+            }
+        })
+        
+        # Check against threshold
+        if recentFailedAttempts >= self.loginFailureThreshold:
+            # Lock if threshold exceeded
+            AccountLock(username, True)
+        
+    # Function to handle locking accounts after several failed login attempts and unlocking as needed.
+    def AccountLock(username, lockStatus):
+        # We've done the necessary verification before this ever gets called.
+        # <IMPROVEMENT> Move all update fields to a DatabaseUpdate(username, {field, value}) function.
+        self.collection.update_one("username": username, {
+            "$set": { "isLocked": lockStatus }
+        })
+    
     # Upon user request, validate the session
         # Make sure the session is present
         # Make sure the session hasn't expired
