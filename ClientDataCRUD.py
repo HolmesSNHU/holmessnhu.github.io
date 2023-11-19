@@ -41,7 +41,7 @@ class ClientDataCRUD(object):
             if self.database is not None:
                 print(f"Connected to database: {DB}")
             else:
-                print(f"Failed to connected to the {DB} database.")
+                print(f"Failed to connect to the {DB} database.")
             # self.collection = self.database['%s' % (COL)]         # Commenting this out since we'll be setting it later.
         
         except errors.ConnectionError as connectionError:
