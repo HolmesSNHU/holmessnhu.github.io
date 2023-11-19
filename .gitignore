@@ -1,3 +1,9 @@
 *.log
 *Log.*
-*/diagnostic.data/
+
+# MongoDB files
+*.bson
+*.json
+/database/backup/*
+/database/diagnostic.data/*
+*.wt
