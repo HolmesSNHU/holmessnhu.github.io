@@ -22,6 +22,7 @@ import hashlib      # For password hashing
 import secrets      # For token generation
 import datetime     # For timestamp generation
 import configparser # For parsing the configuration file
+import uuid         # For generating unique user IDs (UUIDs)
 
 class SecurityLayer:
     def __init__ (self):
@@ -29,13 +30,14 @@ class SecurityLayer:
         # Store some default values for login and session management.
         self.loginFailureThreshold = 5      # Number of failed login attempts before account is locked
         self.sessionLifespan = 600          # Lifespan of session in seconds since last activity. Also used for account lockouts.
+        self.tokenSize = 32                 # Number of bytes that a security token should contain. 32 should be adequate for our purposes.
         
         # Store active user sessions in a local dictionary.
         # <IMPROVEMENT>: A more robust database-centric solution would improve scaling and usability.
         self.activeSessions = {}
         
         # Load the configuration details into a ConfigParser
-        self.config = LoadConfig("./database/CS499_secure.ini")
+        self.config = self.LoadConfig("./database/CS499_secure.ini")
         
         # If loading the configuration details failed, we can't continue.
         if (self.config is None):
@@ -43,7 +45,7 @@ class SecurityLayer:
             return
             
         # Establish a connection to the database using the credentials from the configuration file.
-        self.database = ConnectToDatabase(self.config)
+        self.database = self.ConnectToDatabase(self.config)
         
         # If connecting to the database failed, we can't continue.
         if (self.database is None):
@@ -99,7 +101,7 @@ class SecurityLayer:
     # Similar to the LoadConfig function, this is primarily used during initialization but has been separated out for maintainability and encapsulation.
     # This function returns a MongoClient that connects to the server and can be used for the rest of the class.
     # <IMPROVEMENT> Separate out into a Connection module and generalize for re-use here and in the other modules.
-    def ConnectToDatabase(self, config)
+    def ConnectToDatabase(self, config):
         
         # Collect credentials and database details from the config file.
         # While it's no longer an external file, try-except is still good practice for the likely scenarios.
@@ -121,6 +123,14 @@ class SecurityLayer:
         try:
             database = MongoClient('mongodb://%s:%s@%s:%d/%s' % (USER,PASS,HOST,PORT,DB))
             
+            # Verify success, then return the database for use.
+            if database is not None:
+                print(f"Connected to database: {DB}")
+                return database
+            else:
+                print(f"Failed to connected to the {DB} database.")
+                return None
+            
         except errors.ConnectionError as e:     # Thrown if there is some kind of connection error.
             print(f"Failed to connect to MongoDB: {e}")
             return None
@@ -128,20 +138,14 @@ class SecurityLayer:
             print(f"An unexpected exception occurred while connecting to the database: {e}")
             return None
             
-        # Verify success, then return the database for use.
-        if database is not None:
-            print(f"Connected to database: {DB}")
-            return database
-        else:
-            print(f"Failed to connected to the {DB} database.")
-            return None
+
     
     # Function to authenticate a login attempt by verifying the provided credentials against the credentials stored in the database.
     # Just provides a boolean authentication and the dashboard should call success or failure accordingly for session management purposes.
     def AuthenticateUser(self, username, password):
         
         # Verify user exists.
-        user = VerifyUser(username)
+        user = self.VerifyUser(username)
         
         # If they don't exist, reject the login attempt.
         # Cannot trigger a LoginFailure() for the user since the user does not exist.
@@ -153,13 +157,13 @@ class SecurityLayer:
         
         # Before we test the login credentials, check the account's locked status.
         # <IMPROVEMENT> Communicate to the dashboard the reason why the login failed so the user can decide how to proceed.
-        if GetAccountLocked(user):
+        if self.GetAccountLocked(user):
             print(f"Login attempt for {username} failed; account is locked.")
             return False
             
         
         # Hash the supplied password using SHA-256
-        hashedPassword = HashPassword(password)
+        hashedPassword = self.HashPassword(password)
         
         # Retrieve the stored password hash from user data
         storedPasswordHash = user.get("hashed_password")
@@ -167,7 +171,7 @@ class SecurityLayer:
         # Verify hashed credentials against each other.
         # This will return a simple boolean result, so we can just return it directly.
         # <IMPROVEMENT> Communicate to the dashboard the reason why the login failed (if it did) so the user can decide how to proceed.
-        return VerifyPassword(hashedPassword, storedPasswordHash):
+        return self.VerifyPassword(hashedPassword, storedPasswordHash)
         
     
     # Function for verifying that a given user is present in the login database. If so, return the user data for use.
@@ -213,28 +217,25 @@ class SecurityLayer:
         
     # Function for handling successful login attempts. Called by the dashboard after a successful AuthenticateUser
     # Returns a security token.
-    def LoginSuccess(username):
+    def LoginSuccess(self, username):
         
         # A successful authentication requires that the user and their credentials have been verified, so we can skip straight to functionality.
                 
         # Firstly, a successful login attempt should clear the recent failures.
         # We'll update the last login attempt at the same time just for completeness's sake.
-        # <IMPROVEMENT> Move all update fields to a DatabaseUpdate(username, {field, value}) function.
-        self.collection.update_one("username": username, {
-            "$set": { "recentFailedAttempts" : 0,
-                      "lastLoginAttempt": datetime.now()
-            }
-        })
+        try:
+            self.UpdateDatabase(username, { 
+                        "recentFailedAttempts" : 0,
+                        "lastLoginAttempt": datetime.now()
+                    })
         
-        # Second, generate a security token and return it.
-        return GenerateSecurityToken()
-    
-    def GenerateSecurityToken():
+        # Second, generate an active session for the user and return it.
+        return self.GenerateActiveSession(username)
     
     # Function to handle account locking and unlocking.
     # Accepts a database document of the user's information.
     # Returns a boolean for whether the account is currently locked after processing is complete.
-    def GetAccountLocked(user):
+    def GetAccountLocked(self, user):
         
         # First, check to see if the user is currently locked. If it isn't, we can carry on as normal.
         accountLocked = user.get("isLocked")
@@ -249,18 +250,18 @@ class SecurityLayer:
         # Subtracting two datetime objects results in a timedelta object, which lets us pull total_seconds() directly.
         if (datetime.now() - lastLoginAttempt).total_seconds() > self.sessionLifespan:
             # If it's been longer than the session lifespan, unlock the account and return that there is no lock.
-            AccountLock(username, False)
+            self.AccountLock(username, False)
             return False
         else:
             # Otherwise, it's locked and this is a failed login attempt.
             return True
     
     # Function for handling failed login attempts. Called by the dashboard after a failed AuthenticateUser
-    def LoginFailed(username):
+    def LoginFailed(self, username):
         
         # There are situations where a login can fail but not be attributed to any specific user.
         # Retrieve the user information.
-        user = VerifyUser(username)
+        user = self.VerifyUser(username)
         
         # if the user doesn't exist, we're done.
         # <IMPROVEMENT> Expand the user session to include pre-login periods so that each IP address only has so many login attempts before they are locked out.
@@ -271,30 +272,128 @@ class SecurityLayer:
         recentFailedAttempts = user.get("recentFailedAttempts", 0) + 1
         
         # A failed login attempt should increment the recent failed attempts and last login attempt time.
-        # <IMPROVEMENT> Move all update fields to a DatabaseUpdate(username, {field, value}) function.
-        self.collection.update_one("username": username, {
-            "$set": { "recentFailedAttempts" : recentFailedAttempts,
-                      "lastLoginAttempt": datetime.now()
-            }
-        })
+        self.UpdateDatabase(username, { 
+                        "recentFailedAttempts" : recentFailedAttempts,
+                        "lastLoginAttempt": datetime.now()
+                    })
         
         # Check against threshold
         if recentFailedAttempts >= self.loginFailureThreshold:
             # Lock if threshold exceeded
-            AccountLock(username, True)
+            self.AccountLock(username, True)
         
     # Function to handle locking accounts after several failed login attempts and unlocking as needed.
-    def AccountLock(username, lockStatus):
+    def AccountLock(self, username, lockStatus):
         # We've done the necessary verification before this ever gets called.
-        # <IMPROVEMENT> Move all update fields to a DatabaseUpdate(username, {field, value}) function.
-        self.collection.update_one("username": username, {
-            "$set": { "isLocked": lockStatus }
-        })
+        self.UpdateDatabase(username, { "isLocked": lockStatus })
     
-    # Upon user request, validate the session
-        # Make sure the session is present
-        # Make sure the session hasn't expired
-        # Update session's last active so that future checks use the most recent activity to compare against
+    # Function to manage generating an active session.
+    # An active session includes a unique user_ID for the session, the attached username, the lastActivity timestamp, and the generated security token.
+    # It is only called when a login is successful and should return the security token for delivery to the client.
+    def GenerateActiveSession(self, username):
+        # An active session as three things; the username, the lastActivity timestamp, and the security token.
+        # We have the first one, so we need to generate the last two.
+        
+        # Generate an initial lastActivity timestamp.
+        lastActivity = datetime.now()
+        
+        # Generate a security token.
+        securityToken = self.GenerateSecurityToken()
+        
+        # Generate a UUID for the session
+        sessionID = self.GenerateUUID()
+        
+        # The security layer stores all active sessions in self.activeSessions for verification purposes.
+        # <IMPROVEMENT>: A more robust database-centric solution would improve scaling and usability.        
+        sessionData = {
+            "username": username,
+            "token": securityToken,
+            "lastActive": lastActivity
+        }
+        self.activeSessions[sessionID] = sessionData
+        
+        # Finally, return the security token for transmission to the user and local storage.
+        return securityToken
     
-    # 
+    # Function to generate a unique user ID for each session. It's just a numeric ID so it should mesh well for data structure and database purposes.
+    def GenerateUUID(self):
+        # Python's UUID4 function doesn't technically GUARANTEE uniqueness but it's so astronomically unlikely that it may as well be unique.
+        # Converting it to a string before returning it ensures that it's easily stored and handled.
+        return str(uuid.uuid4())
+    
+    # Function to generate and return a security token, which will be bundled into the active session
+    def GenerateSecurityToken(self):
+        # A security token just needs to be something that's sufficiently difficult to guess which can be shared between client and server securely for verification.
+        # We'll use the Python secrets library to generate the security token as a random string of characters.
+        # urlsafe takes a number of bytes to use to generate a token that is safe for usage in a URL. that should be enough for our purposes
+        return secrets.token_urlsafe(self.tokenSize)
+    
+    # Function to validate the user's current session. Called every time a request is made.
+    def ValidateSession(self, UUID, token):
+        
+        # The dictionary isn't technically external but we can still try-except it.
+        
+        try:
+            # Confirm the UUID is present. If it isn't, reject validation.
+            if UUID not in self.activeSessions:
+                return False
+            
+            # The session exists at this point. Get a reference to the session and current time since we'll be using both a few times.
+            session = self.activeSessions[UUID]
+            currentTime = datetime.now()
+            
+            # Confirm the UUID has not yet expired. If it has, end the session and reject validation.
+            if (currentTime - session["lastActive"]) > self.sessionLifespan:
+                self.EndActiveSession(UUID)
+                return False
+                
+            # Confirm the security token matches. If it doesn't, end the session and reject validation.
+            if token != session["token"]:
+                self.EndActiveSession(UUID)
+                return False
+                
+            # We only reach this point if the session exists and is currently valid.
+            
+            # Update the session's last active time and confirm validity.
+            session["lastActive"] = currentTime
+            return True
+            
+        except KeyError as e:           # Thrown if the key requested 'lastActive', 'token' are not present. Should never happen. Should.
+            print(f"Error in session validation. {e}")
+            return False
+        except Exception as e:          # Catch-all
+            print(f"An unexpected exception occurred during session validation: {e}")
+            return False
+            
+        
+    
+    # Function to end an active session. Called only when validation identifies an expired session.
+    def EndActiveSession(self, UUID):
+        # Technically it's not necessary to verify the UUID is in the dictionary since we only get here if it is, but it won't hurt anything either.
+        if UUID in self.activeSessions:
+            # activeSessions is a dictionary of dictionaries, so we need to purge the session dictionary and THEN purge the activeSessions entry.
+            self.activeSessions[UUID].clear()       # Clears out all elements of the dictionary contained at self.activeSessions[UUID]
+            del self.activeSessions[UUID]           # Deletes the UUID entry in self.activeSessions.
+            
+        return
+        
+    # Function to update database values for a given user. Only called after verification is completed.
+    # Accepts the target username and a dictionary of {field : newValue}. Returns boolean for success or failure.
+    def UpdateDatabase(self, username, dataDict):
+        
+        # This function is mostly for ease of error-handling. I made it a bit generic so I can use it anywhere I need to.
+        # <IMPROVEMENT> Add in dataDict verification to ensure data being set matches database expectations.
+        
+        try:
+            self.collection.update_one({"username": username}, { "$set": dataDict })
+            return True
+        except errors.OperationFailure as e:        # Throws if the operation fails for some reason
+            print(f"MongoDB update failed. Username: {username} -- Data: {dataDict} -- Error: {e}")
+            return False
+        except Exception as e:          # Catch-all
+            print(f"An unexpected exception occurred during database update: Username: {username} -- Data: {dataDict} -- Error: {e}")
+            return False
+        
+        # Just in case the try-except block is no good.
+        return False
     

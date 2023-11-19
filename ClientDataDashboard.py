@@ -19,6 +19,11 @@ import pandas as pd
 
 # Import CRUD interface layer
 from ClientDataCRUD import ClientDataCRUD
+
+# Import Security Layer
+from CS499_Security import SecurityLayer
+
+# PyMongo utilities
 from pymongo import errors
 
 ###########################
