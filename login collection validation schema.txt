@@ -1,0 +1,29 @@
+db.createCollection("CS499_logins", {
+	validator: {
+		$jsonSchema: {
+			bsonType: "object",
+			required: ["username", "hashed_password", "role"],
+			properties: {
+				username: {
+					bsonType: "string"
+				},
+				hashed_password: {
+					bsonType: "string"
+				},
+				role: {
+					bsonType: "string",
+					enum: ["read", "readWrite"]
+				},
+				isLocked: {
+					bsonType: "bool"
+				},
+				lastLoginAttempt: {
+					bsonType: "date"
+				},
+				recentFailedAttempts: {
+					bsonType: "int"
+				}
+			}
+		}
+	}, validationLevel: "strict"
+})
