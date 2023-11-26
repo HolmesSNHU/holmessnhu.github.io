@@ -138,32 +138,40 @@ class SecurityLayer:
         else:
             print(f"Account unlocking failed for {self.tempUsername}")
     
-    # TEMPORARY FUNCTION FOR TESTING ONLY
-    def AddTestUser(self, username, password):
+    def RegisterUser(self, username, password, permissions):
         userExists = self.VerifyUser(username)
-        if (userExists):
+        if userExists:
             print(f"Test user {username} already exists. No need to add again. Skipping.")
             return
-            
+        
+        if permissions is not "read" and permissions is not "readWriteCustom":
+            print(f"Permissions failed to set properly. {permissions} is not a valid value. Setting to 'read' as default.")
+            permissions = "read"
+        
         hashed_password = self.HashPassword(password)
         
         if hashed_password:
-            tempUser = {
+            user = {
                 "username": username,
                 "hashed_password": hashed_password,
-                "role": "readWrite",
+                "role": permissions,
                 "isLocked": False,
                 "lastLoginAttempt": datetime.datetime.now(),
                 "recentFailedAttempts": 0
             }
             
             try:
-                self.collection.insert_one(tempUser)
+                self.collection.insert_one(user)
                 print(f"User '{username}' added successfully.")
+                return True
             except Exception as e:
-                print(f"Failed to add user '{username}' during AddTestUser: {e}")
+                print(f"Failed to add user '{username}' during RegisterUser: {e}")
+                return False
         else:
             print(f"Failed to hash password for user '{username}'")
+            return False
+            
+        return False
     
     # Loads the login credentials from the configFile.
     # This primarily occurs during initialization but it is separated into its own function for maintainability and encapsulation.

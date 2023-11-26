@@ -23,7 +23,7 @@
 # Configure the necessary Python module imports for dashboard components
 # Dash by Plotly
 from dash import Dash
-from dash import dcc, html
+from dash import dcc, html, callback_context
 from dash import dash_table
 from dash.dependencies import Input, Output, State
 import dash_leaflet as dl
@@ -66,9 +66,9 @@ try:
     sl = SecurityLayer()
     
 except errors.OperationFailure as operationFailure:
-    print(f"Operation failure: {operationFailure}")
+    print(f"Operation failure during dashboard initialization: {operationFailure}")
 except Exception as exception:
-    print(f"An unexpected exception occurred: {exception}") 
+    print(f"An unexpected exception occurred during dashboard initialization: {exception}") 
 
 # These will be established once login is verified:
 # db = Connect to database via CRUD Module
@@ -122,8 +122,7 @@ loginLayout = html.Div(
             html.Div(id='loginResult', children=[]),
             html.Div([
                 html.Button("Login", id="login-button", n_clicks=0, style={'margin-top':'20px', 'margin-right':'10px','alignItems': 'center'}),
-                html.Button("Register", id="register-button", n_clicks=0, style={'margin-top':'20px', 'margin-right':'10px','alignItems': 'center'}),
-                html.Button("Register (Admin)", id="registerAdmin-button", n_clicks=0, style={'margin-top':'20px','alignItems': 'center'})
+                html.Button("Register", id="register-button", n_clicks=0, style={'margin-top':'20px', 'margin-right':'10px','alignItems': 'center'})
                 ])
             ]
         )
@@ -164,7 +163,6 @@ dashboardLayout = html.Div(style={'max-width':'80%', 'margin':'auto'}, children=
     html.Hr(),
     dash_table.DataTable(id='datatable-id',
                          columns=[
-                            #{"name": i, "id": i, "deletable": False, "selectable": True} for i in df.columns],
                             {"name": "First Name", "id":"first_name", "deletable": False, "selectable": True},
                             {"name": "Last Name", "id":"last_name", "deletable": False, "selectable": True},
                             {"name": "Account Nickname", "id":"account_nickname", "deletable": False, "selectable": True},
@@ -228,12 +226,12 @@ app.layout = html.Div([
 #######################################################################################################################################
 
 #############################################
-# Login Callbacks
+# Login and Registration Callbacks
 #############################################
 
 # Pass the login credentials that were input into the SecurityLayer for verification.
 @app.callback(
-    Output('login-state', 'data'),              # Updates the dcc.Store login-state on success.
+    Output('login-state', 'data', allow_duplicate=True),              # Updates the dcc.Store login-state on success.
     [Input('login-button', 'n_clicks')],     # Activates upon the login-button's 'n_clicks' value changing
     # Pulls the value of these inputs as arguments for the function.
     [State('login-state', 'data'), State('username-input', 'value'), State('password-input', 'value')],
@@ -266,13 +264,43 @@ def AuthenticateUser(n_clicks, loginState, username, password):
         
 # Update a div indicating a failed login.
 @app.callback(
-    Output('loginResult', 'children'),              # Updates the loginResult div with the return result
-    Input('login-state', 'data')     # Triggers when the login-state is updated after a failed login
+    Output('loginResult', 'children', allow_duplicate=True),              # Updates the loginResult div with the return result
+    Input('login-state', 'data'),     # Triggers when the update state changes
+    prevent_initial_call = True
 )
 def UpdateLoginResults(loginState):
-    print("Updating login results.")
-    if (loginState == "failedLogin"):
+    print("Updating status results.")
+    if loginState == "registrationSuccess":
+        return html.Div("Registration successful. You may now log in.")
+    elif loginState == "registrationFailure":
+        return html.Div("Registration failed. Please try again.")
+    elif loginState == "loginFailure":
         return html.Div("Login failed. Incorrect username or password.")
+    else:
+        return html.Div("Login failed. Please try again.")
+    
+# Callback to handle registration requests
+@app.callback(
+        Output('login-state', 'data'),
+        Input('register-button', 'n_clicks'),
+    [
+        State('username-input', 'value'),
+        State('password-input', 'value')
+    ],
+    prevent_initial_call = True
+)
+def HandleRegistration(registerClicks, username, password):
+
+    # Handle the user registration through the security layer.
+    # All new users have the readWrite permissions for now, but it would be simple to expand this with proper read-only functionality.
+    result = sl.RegisterUser(username, password, "readWriteCustom")
+    if (result):
+        print(f"Success in registering admin {username}.")
+        return "registrationSuccess"
+    else:
+        # Failure
+        print(f"Failure to register admin {username}.")
+        return "registrationFailure"
 
 # Function to initialize CRUD layer. Called only after login verification of the credentials is successful.
 def InitializeCRUDLayer(username, password, token):
@@ -289,9 +317,9 @@ def InitializeCRUDLayer(username, password, token):
         return html.Div("CRUD layer initialized.")
     
     except errors.OperationFailure as operationFailure:
-        print(f"Operation failure: {operationFailure}")
+        print(f"Operation failure during CRUD initialization: {operationFailure}")
     except Exception as exception:
-        print(f"An unexpected exception occurred: {exception}") 
+        print(f"An unexpected exception occurred during CRUD initialization: {exception}") 
         
     return html.Div()
 

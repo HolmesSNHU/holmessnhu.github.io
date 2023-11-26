@@ -161,7 +161,7 @@ class ClientDataCRUD(object):
                     return False
                 
             except errors.OperationFailure as operationFailure:
-                print(f"Operation failure: {operationFailure}")
+                print(f"Operation failure during create: {operationFailure}")
             except Exception as exception:
                 print(f"An unexpected exception occurred during creation: {exception}")
         else:
@@ -181,7 +181,7 @@ class ClientDataCRUD(object):
                 return results
             
             except errors.OperationFailure as operationFailure:
-                print(f"Operation failure: {operationFailure}")
+                print(f"Operation failure during read: {operationFailure} in {type(self.database[collectionName])}")
                 # If the return fails, we want to gracefully handle it by ensuring the empty list returns.
                 return []
             except Exception as exception:
