@@ -14,24 +14,35 @@
 # 
 # **************************************************
 
+#######################################################################################################################################
+
+###########################
+# Module Imports
+###########################
+
 # Configure the necessary Python module imports for dashboard components
+# Dash by Plotly
 from dash import Dash
-import dash_leaflet as dl
-from dash import dcc
-from dash import html
-import plotly.express as px
+from dash import dcc, html
 from dash import dash_table
 from dash.dependencies import Input, Output, State
-import base64
-from datetime import datetime
+import dash_leaflet as dl
+import plotly.express as px
 
-# Configure OS routines
-import os
-
-# Configure the plotting routines
+# Plotting Routines for graphs, charts, etc.
 import numpy as np
 import pandas as pd
 # import matplotlib.pyplot as plt
+
+# PyMongo utilities
+from pymongo import errors
+
+# General utility imports
+import base64                   # Image encoding
+from datetime import datetime   # Datetime encoding
+
+# Configure OS routines
+import os
 
 # Import CRUD interface layer
 from ClientDataCRUD import ClientDataCRUD
@@ -39,83 +50,88 @@ from ClientDataCRUD import ClientDataCRUD
 # Import Security Layer
 from CS499_Security import SecurityLayer
 
-# PyMongo utilities
-from pymongo import errors
+#######################################################################################################################################
+#######################################################################################################################################
 
-###########################
-# Data Manipulation / Model
-###########################
+#########################
+# Runtime Setup
+# app must be declared before callbacks.
 
-# The mergeRead function reduces redundancy, since we'll need to pull data like this quite often for most dashboard purposes.
-# It will let us request data and strip it of ObjectIds before it goes to the dashboard.
+#########################
+# Set up the various modules we'll need.
+# sl = Integrate the SecurityLayer for verification.
 
-def mergeRead(filter_data={}):
+# These will be established once login is verified:
+# db = Connect to database via CRUD Module
+# df = A DataFrame containing the data from the database
 
-    print(f"MergeRead called. filter_data: {filter_data}")
-    # Since the dashboard will be using data from both collections, we'll get data frames from both collections according to the requisite data.
-    accounts_df = pd.DataFrame(db.read("accounts",filter_data))
-    clients_df = pd.DataFrame(db.read("clients",{}))
-    
-    # We'll merge the two into a single data frame based on the shared client_id fields.
-    merged_df = pd.merge(accounts_df, clients_df, left_on="client_id", right_on="_id", how="left")
-        
-    # Finally, we'll double-check and make sure to strip the ObjectId fields before returning it. inplace allows us to do so with the existing data object.
-    merged_df.drop(columns=['_id_x', '_id_y', 'client_id'],inplace=True)
-    
-    # But wait, there's more! This is a good place to insert derived values that depend on both the client and account data.
-    # We're just going to add days_since_last_review here but this would be a good place for other elements too.
-    
-    # First we have to convert the last_review_date to a proper datetime
-    merged_df['last_review_date'] = pd.to_datetime(merged_df['last_review_date'])
-    
-    # Now we get the difference between the last_review_date and today. We'll make a new, temporary column to store the days_since_last_review field.
-    today = datetime.now()
-    merged_df['days_since_last_review'] = (today - merged_df['last_review_date']).dt.days
-    
-    # With the derived data added, we're now safe to return the data for any use.
-    
-    return merged_df
-
-# The credentials are currently hard-coded into the interface layer as well, so this is technically redundant.
-# To note, however, that login details will be replaced with a login database in the future.
-
-username = "admin"
-password = "root"
-
-# Connect to database via CRUD Module
 # Whenever initiating contact with external elements, try-catch is a good idea.
 try:
-    db = ClientDataCRUD(username, password)
-
-    # A problem exists wherein MongoDB will return the _id column as an ObjectId, which cannot be JSON serialized.
-    # To resolve this, we need to strip any ObjectId values before they get serialized, and the simplest way to do this is to strip them as soon as they're read from the database.
-    # However, we don't want to update the CRUD layer to do this because we may still want to be able to access those IDs later, so we'll define a mergeRead() function in the dashboard.
-    
-    df = mergeRead()    
+    sl = SecurityLayer()
+    db = None
+    df = None
     
 except errors.OperationFailure as operationFailure:
     print(f"Operation failure: {operationFailure}")
 except Exception as exception:
     print(f"An unexpected exception occurred: {exception}") 
 
-## Debug
-# print(len(df.to_dict(orient='records')))
-# print(df.columns)
+# Set up the Dash framework, layout declarations, and state storage.
+app = Dash(__name__)
 
+#########################
+# Login Layout / View
+#########################
 
-# Open a SecurityLayer instance. More significant adjustments will be necessary to fully implement logins.
-# security = SecurityLayer()
+loginLayout = html.Div(
+    style={
+        'display': 'flex',
+        'flexDirection': 'column',
+        'alignItems': 'center',
+        'width': '40%',
+        'margin': 'auto'
+    }, children =[
+        html.H1("Login to Access Dashboard"),
+        html.Div(
+            style={
+            'display': 'flex',
+            'flexDirection': 'column',
+            'alignItems': 'center'
+            }, children=[
+            html.Div(
+                style={
+                    'display': 'flex',
+                    'alignItems': 'right',
+                    'marginBottom': '10px'
+                }, children=[
+                    html.Label("Username: ", style={'marginRight':'10px', 'width':'100px'}),
+                    dcc.Input(id="username-input", type="text", value="", placeholder="Enter your username."),
+                ]
+            ),
+            html.Div(
+                style={
+                    'display': 'flex',
+                    'alignItems': 'right',
+                    'marginBottom': '10px'
+                }, children=[
+                    html.Label("Password: ", style={'marginRight':'10px', 'width':'100px'}),
+                    dcc.Input(id="password-input", type="password", value="", placeholder="Enter your password."),
+                ]
+            ),            
+            html.Button("Login", id="login-button", n_clicks=0, style={'margin-top':'20px', 'alignItems': 'center'})
+            ]
+        )
+    ]
+)
 
 #########################
 # Dashboard Layout / View
 #########################
-app = Dash(__name__)
 
 #image_filename = '6 - Grazioso Salvare Logo.png' # replace with your own image
 #encoded_image = base64.b64encode(open(image_filename, 'rb').read())
 
-print(f"Attempting to apply base layout.")
-app.layout = html.Div(style={'max-width':'80%', 'margin':'auto'}, children=[
+dashboardLayout = html.Div(style={'max-width':'80%', 'margin':'auto'}, children=[
     #html.Div(id='hidden-div', style={'display':'none'}),
     #html.Center(html.Img(src='data:image/png;base64,{}'.format(encoded_image.decode()),
                          #style={'max-width':'200px', 'max-height':'200px'})),
@@ -153,7 +169,7 @@ app.layout = html.Div(style={'max-width':'80%', 'margin':'auto'}, children=[
                             {"name": "RMD Amount", "id":"rmd_amount", "deletable": False, "selectable": True},
                             {"name": "Days since Last Review", "id":"days_since_last_review", "deletable": False, "selectable": True}
                         ],
-                         data=df.to_dict('records'),
+                         data=df.to_dict('records') if df is not None else {},
                          editable=False,
                          filter_action="native",
                          sort_action="native",
@@ -185,21 +201,149 @@ app.layout = html.Div(style={'max-width':'80%', 'margin':'auto'}, children=[
             # ])
 ])
 
+app.layout = html.Div([
+    dcc.Store(id='login-state', data='login'),
+    
+    html.Div(id='login-layout', style={'display':'block'}, children=[
+        loginLayout
+    ]),
+    html.Div(id='dashboard-layout', style={'display':'none'}, children=[
+        dashboardLayout
+    ])
+])
+
+#######################################################################################################################################
+
+######################################################
+# Function, Callback, Layout Definitions
+######################################################
+
+#######################################################################################################################################
+
 #############################################
-# Interaction Between Components / Controller
+# Login Callbacks
 #############################################
 
-@app.callback(Output('filter-type', 'inputStyle'),
-                [Input('filter-type', 'value')])
-def update_label_style(selected_value):
-    print(f"Attempting to update_label_style.")
-    default_style = {'background-color': 'lightblue', 'margin-left': '5px', 'margin-right': '5px'}
-    selected_style = {'background-color': 'darkblue', 'margin-left': '5px', 'margin-right': '5px'}
- 
-    return selected_style if selected_value != 'reset' else default_style
+# Pass the login credentials that were input into the SecurityLayer for verification.
+@app.callback(
+    Output('login-state', 'data'),              # Updates the dcc.Store login-state on success.
+    [Input('login-button', 'n_clicks')],     # Activates upon the login-button's 'n_clicks' value changing
+    # Pulls the value of these inputs as arguments for the function.
+    [State('login-state', 'data'), State('username-input', 'value'), State('password-input', 'value')],
+    prevent_initial_call=True
+)
+def AuthenticateUser(n_clicks, loginState, username, password):
+    print(f"Login button click detected. Authenticating {username} input credentials.")
+    # Only authenticate once the login button has been clicked
+    if n_clicks > 0:
+        # Request the security layer authenticate the provided credentials.
+        # Returns True on valid credentials, False otherwise.
+        if sl.AuthenticateUser(username, password):
+            # Login successful
+            print(f"Login validation successful for user {username}.")
+            # Store the security token from the security layer.
+            token = sl.LoginSuccess(username)
+            # Initialize the CRUD layer using the verified credentials
+            print(f"Initializing CRUD layer.")
+            InitializeCRUDLayer(username, password, token)
+            # Return the string that requests the dashboard layout.
+            return "dashboard"
+        else:
+            # Login failed
+            print(f"Login validation failed for user {username}.")
+            # Report the login failure.
+            sl.LoginFailure(username)
+            return "login"
+    # If somehow we get here and don't have the credentials to login, return to the login layout.
+    else:
+        return "login"
 
-@app.callback(Output('datatable-id','data'),
-              [Input('filter-type', 'value')])
+# Function to initialize CRUD layer. Called only after login verification of the credentials is successful.
+def InitializeCRUDLayer(username, password, token):
+    try:
+        self.db = ClientDataCRUD(sl, token, username, password)
+        self.df = mergeRead()
+        return html.Div("CRUD layer initialized.")
+    
+    except errors.OperationFailure as operationFailure:
+        print(f"Operation failure: {operationFailure}")
+    except Exception as exception:
+        print(f"An unexpected exception occurred: {exception}") 
+        
+    return html.Div()
+
+# Finally, After login verification, return the correct layout based on the login result.
+@app.callback(
+    Output('login-layout', 'style'),
+    Output('dashboard-layout', 'style'),
+    Input('login-state', 'data')
+)
+def SwitchLayout(loginState):
+    # The login function should return either "/login" or "/dashboard" for a failed or successful login respectively.
+    if loginState == "login":    
+        print(f"Displaying login layout.")
+        # We return both of the layouts simultaneously through the callback.
+        # Doing it this way allows us to establish callbacks with references in both layouts
+        # while only displaying one to avoid errors.
+        # Returning these dictionaries changes which one is displayed based on the order.
+        return {'display': 'block'}, {'display': 'none'}
+    elif loginState == "dashboard":
+        print(f"Displaying base dashboard layout.")
+        return {'display': 'none'}, {'display': 'block'}
+    # Good practice to have a default else case, though. Just in case.
+    else:
+        return {'display': 'block'}, {'display': 'none'}
+
+#######################################################################################################################################
+
+
+
+###########################
+# Data Manipulation / Model
+###########################
+
+# The mergeRead function reduces redundancy, since we'll need to pull data like this quite often for most dashboard purposes.
+# It will let us request data and strip it of ObjectIds before it goes to the dashboard.
+def mergeRead(filter_data={}):
+
+    if db is None:
+        print("MergeRead called before database connection. Returning.")
+        return
+        
+    print(f"MergeRead called. filter_data: {filter_data}")
+    # Since the dashboard will be using data from both collections, we'll get data frames from both collections according to the requisite data.
+    accounts_df = pd.DataFrame(db.read("accounts",filter_data))
+    clients_df = pd.DataFrame(db.read("clients",{}))
+    
+    # We'll merge the two into a single data frame based on the shared client_id fields.
+    merged_df = pd.merge(accounts_df, clients_df, left_on="client_id", right_on="_id", how="left")
+        
+    # Finally, we'll double-check and make sure to strip the ObjectId fields before returning it. inplace allows us to do so with the existing data object.
+    merged_df.drop(columns=['_id_x', '_id_y', 'client_id'],inplace=True)
+    
+    # But wait, there's more! This is a good place to insert derived values that depend on both the client and account data.
+    # We're just going to add days_since_last_review here but this would be a good place for other elements too.
+    
+    # First we have to convert the last_review_date to a proper datetime
+    merged_df['last_review_date'] = pd.to_datetime(merged_df['last_review_date'])
+    
+    # Now we get the difference between the last_review_date and today. We'll make a new, temporary column to store the days_since_last_review field.
+    today = datetime.now()
+    merged_df['days_since_last_review'] = (today - merged_df['last_review_date']).dt.days
+    
+    # With the derived data added, we're now safe to return the data for any use.
+    
+    return merged_df
+
+###########################
+# Dashboard Callbacks
+###########################
+   
+# Update Dashboard on filter application
+@app.callback(
+    Output('datatable-id','data'),
+    [Input('filter-type', 'value')]
+)
 def update_dashboard(filter_type):
     print(f"Attempting to update_dashboard. Filter type: {filter_type}")
     
@@ -275,6 +419,34 @@ def update_dashboard(filter_type):
     # print(f"Data returning from update_dashboard callback: {data}")
     return data
     
+#############################################
+# Interaction Between Components / Controller
+# Style Callbacks
+#############################################
+
+# Update Label Styles on Click
+@app.callback(
+    Output('filter-type', 'inputStyle'),
+    [Input('filter-type', 'value')]
+)
+def update_label_style(selected_value):
+    print(f"Attempting to update_label_style.")
+    default_style = {'background-color': 'lightblue', 'margin-left': '5px', 'margin-right': '5px'}
+    selected_style = {'background-color': 'darkblue', 'margin-left': '5px', 'margin-right': '5px'}
+ 
+    return selected_style if selected_value != 'reset' else default_style
+
+# Highlight a cell on the data table when the user selects it
+@app.callback(
+    Output('datatable-id', 'style_data_conditional'),
+    [Input('datatable-id', 'selected_columns')]
+)
+def update_styles(selected_columns):
+    print(f"Attempting to update_styles.")
+    return [{
+        'if': { 'column_id': i },
+        'background_color': '#D2F3FF'
+    } for i in selected_columns]
     
 # Display the breeds of animal based on quantity represented in
 # the data table
@@ -321,19 +493,6 @@ def update_dashboard(filter_type):
         # )    
     # ]
     
-#This callback will highlight a cell on the data table when the user selects it
-@app.callback(
-    Output('datatable-id', 'style_data_conditional'),
-    [Input('datatable-id', 'selected_columns')]
-)
-def update_styles(selected_columns):
-    print(f"Attempting to update_styles.")
-    return [{
-        'if': { 'column_id': i },
-        'background_color': '#D2F3FF'
-    } for i in selected_columns]
-
-
 # This callback will update the geo-location chart for the selected data entry
 # derived_virtual_data will be the set of data available from the datatable in the form of 
 # a dictionary.
@@ -376,4 +535,13 @@ def update_styles(selected_columns):
             # ])
         # ])
     # ]
+
+#######################################################################################################################################
+#######################################################################################################################################
+
+#########################
+# Runtime Completion
+# app.run_server must be called last.
+#########################
+
 app.run_server(debug=False)
