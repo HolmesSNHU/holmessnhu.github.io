@@ -2,7 +2,7 @@
 # 
 # Filename: CS499_Security.py
 # Version: 1.0.0
-# Purpose: Provide a Python-based security layer to allow the ClientDataDashboard to securely log into its database and manage the user"s session.
+# Purpose: Provide a Python/PyMongo-based security layer to allow the ClientDataDashboard to securely log into its database and manage the user's session.
 # 
 # Written: November 2023
 # Programmer: Jason Holmes

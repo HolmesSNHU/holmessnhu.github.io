@@ -1,3 +1,19 @@
+# **************************************************
+# 
+# Filename: ClientDataDashboard.py
+# Version: 1.0.0
+# Purpose: Provide a Dash by Plotly-based single page dashboard application for visualizing and interacting with data from the MongoDB database.
+# 
+# Original Version Adapted: September/October 2023
+# Current Version Written: November 2023
+# Programmer: Jason Holmes
+# Contact Information: jason.holmes3@snhu.edu
+# 
+# Current Known Issues:
+# * This was heavily adapted from a class project in which the original code structure was provided.
+# 
+# **************************************************
+
 # Configure the necessary Python module imports for dashboard components
 from dash import Dash
 import dash_leaflet as dl

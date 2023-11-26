@@ -1,3 +1,19 @@
+# **************************************************
+# 
+# Filename: ClientDataCRUD.py
+# Version: 1.0.0
+# Purpose: Provide a Python/PyMongo-based interface layer to allow the ClientDataDashboard to interact with data within the MongoDB database.
+# 
+# Original Version Written: September/October 2023
+# Current Version Written: November 2023
+# Programmer: Jason Holmes
+# Contact Information: jason.holmes3@snhu.edu
+# 
+# Current Known Issues:
+# This CRUD layer was adopted wholesale from a previous project and has some outdated paradigms.
+# 
+# **************************************************
+
 #!/usr/bin/env python
 # coding: utf-8
 
