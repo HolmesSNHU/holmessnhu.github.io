@@ -126,7 +126,7 @@ class AnimalShelter(object):
             except errors.OperationFailure as operationFailure:
                 print(f"Operation failure during update: {operationFailure}")
             except Exception as exception:
-                print(f"An unexpected exception occurred during update: {exception}") 
+                print(f"An unexpected exception occurred during update: {exception}")         
 
 # Create method to implement the D in CRUD.
     def delete(self, target):
@@ -148,5 +148,4 @@ class AnimalShelter(object):
             # Otherwise, indicate explicitly.
             else:
                 print("Target record not found.")
-                return 0
-                
+                return 0                
