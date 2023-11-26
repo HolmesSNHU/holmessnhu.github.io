@@ -383,6 +383,7 @@ class SecurityLayer:
     # An active session includes a unique user_ID for the session, the attached username, the lastActivity timestamp, and the generated security token.
     # It is only called when a login is successful and should return the security token for delivery to the client.
     def GenerateActiveSession(self, username):
+        # <IMPROVEMENT> Detect active sessions from the user and use the same session data.
         # An active session as three things; the username, the lastActivity timestamp, and the security token.
         # We have the first one, so we need to generate the last two.
         

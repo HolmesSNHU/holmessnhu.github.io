@@ -36,11 +36,13 @@ class ClientDataCRUD(object):
     # Initialization
     #########################
 
-    def __init__(self, securityLayer, token, username, password):
+    def __init__(self, securityLayer, session, username, password):
         
         # Set up a reference for the security layer and token so that the dashboard can establish a single security layer instance.
         self.SL = securityLayer
-        self.TOKEN = token
+        self.SESSION = session
+        self.TOKEN = session["token"]
+        print(f"Session details: {self.SESSION} -- {self.TOKEN}")
         
         # Load the configuration details into a ConfigParser
         self.config = self.LoadConfig("./config/CS499_secure.ini")
@@ -147,7 +149,7 @@ class ClientDataCRUD(object):
             # First, verify the token is valid.
             try:
                 collection = self.database[collectionName]
-                print(f"Attempting to access the collection: {collection}")
+                # print(f"Attempting to access the collection: {collection}")
                 insertResult = collection.insert_one(data)  # data should be dictionary
                 # If successful, explicitly acknowledge success.
                 if insertResult.acknowledged:
@@ -173,9 +175,10 @@ class ClientDataCRUD(object):
             # Then attempt to read the requested data from the database.
             try:
                 collection = self.database[collectionName]
-                print(f"Attempting to access collection: {collection}")
+                # print(f"Attempting to access collection: {collection}")
                 # This should return a list that either contains the results or is empty
-                return [entry for entry in collection.find(data)]
+                results = [entry for entry in collection.find(data)]
+                return results
             
             except errors.OperationFailure as operationFailure:
                 print(f"Operation failure: {operationFailure}")

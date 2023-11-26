@@ -61,20 +61,21 @@ from CS499_Security import SecurityLayer
 # Set up the various modules we'll need.
 # sl = Integrate the SecurityLayer for verification.
 
-# These will be established once login is verified:
-# db = Connect to database via CRUD Module
-# df = A DataFrame containing the data from the database
-
 # Whenever initiating contact with external elements, try-catch is a good idea.
 try:
     sl = SecurityLayer()
-    db = None
-    df = None
     
 except errors.OperationFailure as operationFailure:
     print(f"Operation failure: {operationFailure}")
 except Exception as exception:
     print(f"An unexpected exception occurred: {exception}") 
+
+# These will be established once login is verified:
+# db = Connect to database via CRUD Module
+# df = A DataFrame containing the data from the database
+db = None
+df = None
+
 
 # Set up the Dash framework, layout declarations, and state storage.
 app = Dash(__name__)
@@ -117,8 +118,13 @@ loginLayout = html.Div(
                     html.Label("Password: ", style={'marginRight':'10px', 'width':'100px'}),
                     dcc.Input(id="password-input", type="password", value="", placeholder="Enter your password."),
                 ]
-            ),            
-            html.Button("Login", id="login-button", n_clicks=0, style={'margin-top':'20px', 'alignItems': 'center'})
+            ),
+            html.Div(id='loginResult', children=[]),
+            html.Div([
+                html.Button("Login", id="login-button", n_clicks=0, style={'margin-top':'20px', 'margin-right':'10px','alignItems': 'center'}),
+                html.Button("Register", id="register-button", n_clicks=0, style={'margin-top':'20px', 'margin-right':'10px','alignItems': 'center'}),
+                html.Button("Register (Admin)", id="registerAdmin-button", n_clicks=0, style={'margin-top':'20px','alignItems': 'center'})
+                ])
             ]
         )
     ]
@@ -203,6 +209,7 @@ dashboardLayout = html.Div(style={'max-width':'80%', 'margin':'auto'}, children=
 
 app.layout = html.Div([
     dcc.Store(id='login-state', data='login'),
+    dcc.Location(id='url'),
     
     html.Div(id='login-layout', style={'display':'block'}, children=[
         loginLayout
@@ -242,10 +249,9 @@ def AuthenticateUser(n_clicks, loginState, username, password):
             # Login successful
             print(f"Login validation successful for user {username}.")
             # Store the security token from the security layer.
-            token = sl.LoginSuccess(username)
+            session = sl.LoginSuccess(username)
             # Initialize the CRUD layer using the verified credentials
-            print(f"Initializing CRUD layer.")
-            InitializeCRUDLayer(username, password, token)
+            InitializeCRUDLayer(username, password, session)
             # Return the string that requests the dashboard layout.
             return "dashboard"
         else:
@@ -253,16 +259,33 @@ def AuthenticateUser(n_clicks, loginState, username, password):
             print(f"Login validation failed for user {username}.")
             # Report the login failure.
             sl.LoginFailure(username)
-            return "login"
+            return "failedLogin"
     # If somehow we get here and don't have the credentials to login, return to the login layout.
     else:
         return "login"
+        
+# Update a div indicating a failed login.
+@app.callback(
+    Output('loginResult', 'children'),              # Updates the loginResult div with the return result
+    Input('login-state', 'data')     # Triggers when the login-state is updated after a failed login
+)
+def UpdateLoginResults(loginState):
+    print("Updating login results.")
+    if (loginState == "failedLogin"):
+        return html.Div("Login failed. Incorrect username or password.")
 
 # Function to initialize CRUD layer. Called only after login verification of the credentials is successful.
 def InitializeCRUDLayer(username, password, token):
+    
+    # Pull references to these from the overall program to prevent them from being locked in this scope.
+    global db
+    global df
+    
     try:
-        self.db = ClientDataCRUD(sl, token, username, password)
-        self.df = mergeRead()
+        print(f"Initializing CRUD layer.")
+        db = ClientDataCRUD(sl, token, username, password)
+        print(f"Initializing mergeRead.")
+        df = mergeRead()
         return html.Div("CRUD layer initialized.")
     
     except errors.OperationFailure as operationFailure:
@@ -280,7 +303,8 @@ def InitializeCRUDLayer(username, password, token):
 )
 def SwitchLayout(loginState):
     # The login function should return either "/login" or "/dashboard" for a failed or successful login respectively.
-    if loginState == "login":    
+    print(f"Login state is {loginState}")
+    if loginState == "login" or loginState == "failedLogin":    
         print(f"Displaying login layout.")
         # We return both of the layouts simultaneously through the callback.
         # Doing it this way allows us to establish callbacks with references in both layouts
@@ -304,11 +328,15 @@ def SwitchLayout(loginState):
 
 # The mergeRead function reduces redundancy, since we'll need to pull data like this quite often for most dashboard purposes.
 # It will let us request data and strip it of ObjectIds before it goes to the dashboard.
-def mergeRead(filter_data={}):
+def mergeRead(filter_data=None):
 
     if db is None:
         print("MergeRead called before database connection. Returning.")
         return
+        
+    if filter_data is None:
+        print("Filter data is empty. Returning all results.")
+        filter_data = {}
         
     print(f"MergeRead called. filter_data: {filter_data}")
     # Since the dashboard will be using data from both collections, we'll get data frames from both collections according to the requisite data.
