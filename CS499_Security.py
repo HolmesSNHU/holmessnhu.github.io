@@ -2,7 +2,7 @@
 # 
 # Filename: CS499_Security.py
 # Version: 1.0.0
-# Purpose: Provide a Python-based security layer to allow the ClientDataDashboard to securely log into its database and manage the user"s session.
+# Purpose: Provide a Python/PyMongo-based security layer to allow the ClientDataDashboard to securely log into its database and manage the user's session.
 # 
 # Written: November 2023
 # Programmer: Jason Holmes
@@ -10,6 +10,7 @@
 # 
 # Current Known Issues:
 # * This is a limited-scope foundation. Obvious potential improvements marked by <IMPROVEMENT> comments.
+# * In some cases, important corrections are pending and marked by <CORRECTION> comments.
 # 
 # **************************************************
 
@@ -37,7 +38,7 @@ class SecurityLayer:
         self.activeSessions = {}
         
         # Load the configuration details into a ConfigParser
-        self.config = self.LoadConfig("./database/CS499_secure.ini")
+        self.config = self.LoadConfig("./config/CS499_secure.ini")
         
         # If loading the configuration details failed, we can't continue.
         if (self.config is None):
@@ -53,7 +54,7 @@ class SecurityLayer:
             return
         
         # Establish a collection shortcut for later use
-        collectionName = self.config.get("ClientDB", "COL")
+        collectionName = self.config.get("SLLogin", "COL")
         try:
             self.collection = self.database[collectionName]
             
@@ -137,32 +138,40 @@ class SecurityLayer:
         else:
             print(f"Account unlocking failed for {self.tempUsername}")
     
-    # TEMPORARY FUNCTION FOR TESTING ONLY
-    def AddTestUser(self, username, password):
+    def RegisterUser(self, username, password, permissions):
         userExists = self.VerifyUser(username)
-        if (userExists):
+        if userExists:
             print(f"Test user {username} already exists. No need to add again. Skipping.")
             return
-            
+        
+        if permissions is not "read" and permissions is not "readWriteCustom":
+            print(f"Permissions failed to set properly. {permissions} is not a valid value. Setting to 'read' as default.")
+            permissions = "read"
+        
         hashed_password = self.HashPassword(password)
         
         if hashed_password:
-            tempUser = {
+            user = {
                 "username": username,
                 "hashed_password": hashed_password,
-                "role": "readWrite",
+                "role": permissions,
                 "isLocked": False,
                 "lastLoginAttempt": datetime.datetime.now(),
                 "recentFailedAttempts": 0
             }
             
             try:
-                self.collection.insert_one(tempUser)
+                self.collection.insert_one(user)
                 print(f"User '{username}' added successfully.")
+                return True
             except Exception as e:
-                print(f"Failed to add user '{username}' during AddTestUser: {e}")
+                print(f"Failed to add user '{username}' during RegisterUser: {e}")
+                return False
         else:
             print(f"Failed to hash password for user '{username}'")
+            return False
+            
+        return False
     
     # Loads the login credentials from the configFile.
     # This primarily occurs during initialization but it is separated into its own function for maintainability and encapsulation.
@@ -197,13 +206,13 @@ class SecurityLayer:
         # Collect credentials and database details from the config file.
         # While it's no longer an external file, try-except is still good practice for the likely scenarios.
         try:
-            USER = config.get("ClientDB", "USER")
-            PASS = config.get("ClientDB", "PASS")
-            HOST = config.get("ClientDB", "HOST")
-            PORT = config.getint("ClientDB", "PORT")
-            DB = config.get("ClientDB", "DB")
+            USER = config.get("SLLogin", "USER")
+            PASS = config.get("SLLogin", "PASS")
+            HOST = config.get("Server", "HOST")
+            PORT = config.getint("Server", "PORT")
+            DB = config.get("Server", "DB")
             
-        except configparser.NoSectionError:     # Thrown if 'ClientDB' is not a section within the config file.
+        except configparser.NoSectionError:     # Thrown if 'CRUDLogin' or 'Server' are not sections within the config file.
             print("Unable to connect to the database. One of the specified sections does not exist in the configuration file.")
             return None
         except configparser.NoOptionError:      # Thrown if 'USER', 'HOST', etc. are not keys within the config file.
@@ -261,6 +270,7 @@ class SecurityLayer:
         # Verify hashed credentials against each other.
         # This will return a simple boolean result, so we can just return it directly.
         # <IMPROVEMENT> Communicate to the dashboard the reason why the login failed (if it did) so the user can decide how to proceed.
+        # <CORRECTION> This should be reworked to return the token directly rather than rely on the client to request it separate from verification.
         return self.VerifyPassword(hashedPassword, storedPasswordHash)
         
     
@@ -274,7 +284,7 @@ class SecurityLayer:
             return verifyUser
         else:
             # Otherwise, make a note in the log and move on.
-            print("Username not found.")
+            print(f"Username {username} not found.")
             return None
     
     # Password hashing function for login attempts and registration
@@ -346,7 +356,8 @@ class SecurityLayer:
             return True
     
     # Function for handling failed login attempts. Called by the dashboard after a failed AuthenticateUser
-    def LoginFailed(self, username):
+    # <CORRECTION> This should be handled automatically rather than rely on the client to report accurately.
+    def LoginFailure(self, username):
         
         # There are situations where a login can fail but not be attributed to any specific user.
         # Retrieve the user information.
@@ -380,6 +391,7 @@ class SecurityLayer:
     # An active session includes a unique user_ID for the session, the attached username, the lastActivity timestamp, and the generated security token.
     # It is only called when a login is successful and should return the security token for delivery to the client.
     def GenerateActiveSession(self, username):
+        # <IMPROVEMENT> Detect active sessions from the user and use the same session data.
         # An active session as three things; the username, the lastActivity timestamp, and the security token.
         # We have the first one, so we need to generate the last two.
         

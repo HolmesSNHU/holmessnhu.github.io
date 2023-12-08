@@ -2,7 +2,7 @@
 # 
 # Filename: SecurityTestDriver.py
 # Version: 1.0.0
-# Purpose: REAL BASIC driver to run the security layer's temporary built-in unit tests to validate functionality.
+# Purpose: Basic driver to run the security layer's temporary built-in unit tests to validate functionality.
 # 
 # Written: November 2023
 # Programmer: Jason Holmes
