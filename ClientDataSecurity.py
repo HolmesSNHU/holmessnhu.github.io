@@ -1,6 +1,6 @@
 # **************************************************
 # 
-# Filename: CS499_Security.py
+# Filename: ClientDataSecurity.py
 # Version: 1.0.0
 # Purpose: Provide a Python/PyMongo-based security layer to allow the ClientDataDashboard to securely log into its database and manage the user's session.
 # 
@@ -73,70 +73,6 @@ class SecurityLayer:
         except Exception as e:                  # Catch-all
             print(f"An unexpected exception occurred while connecting to the collection: {e}")
             return
-                
-    # EXTREMELY BASIC, temporary unit tests for functionality testing.
-    def RunTests(self):
-    
-        print("Running tests.")
-        print("Test 0: Adding test user...")
-        # Temporary testing variables.
-        self.tempUsername = "admin"
-        self.tempPassword = "root"
-        self.AddTestUser(self.tempUsername, self.tempPassword)
-        
-        print("Test 1: Testing user verification...")
-        verifiedUser = self.VerifyUser(self.tempUsername)
-        if verifiedUser:
-            print(f"Verification passed for {self.tempUsername}")
-        else:
-            print(f"Verification failed for {self.tempUsername}")
-        
-        print("Test 2: Testing password hashing...")
-        hashedPassword = self.HashPassword(self.tempPassword)
-        if self.VerifyPassword(hashedPassword, verifiedUser.get("hashed_password")):
-            print(f"Hashed password verification passed for {self.tempUsername}")
-        else:
-            print(f"Hashed password verification failed for {self.tempUsername}")
-            
-        print("Test 3: Testing authentication...")
-        authenticated = self.AuthenticateUser(self.tempUsername, self.tempPassword)
-        if authenticated:
-            print(f"Authentication passed for {self.tempUsername}")
-        else:
-            print(f"Authentication failed for {self.tempUsername}")
-            
-        print("Test 4: Testing session generation...")
-        session = self.LoginSuccess(self.tempUsername)
-        if session:
-            print(f"Session generation passed for {self.tempUsername}")
-            print(f"Session details: UUID: '{session['UUID']}', token: '{session['token']}'")
-        else:
-            print(f"Session generation failed for {self.tempUsername}")
-            
-        print("Test 5: Testing session validation...")
-        sessionValidated = self.ValidateSession(session["UUID"], session["token"])
-        if sessionValidated:
-            print(f"Session Authentication passed for {self.tempUsername}")
-        else:
-            print(f"Session Authentication failed for {self.tempUsername}")
-            
-        print("Test 6: Testing account lock...")
-        self.AccountLock(self.tempUsername, True)
-        verifiedUser = self.VerifyUser(self.tempUsername)
-        locked = self.GetAccountLocked(verifiedUser)
-        if locked:
-            print(f"Account locking passed for {self.tempUsername}")
-        else:
-            print(f"Account locking failed for {self.tempUsername}")
-            
-        print("Test 7: Testing account unlock...")
-        self.AccountLock(self.tempUsername, False)
-        verifiedUser = self.VerifyUser(self.tempUsername)
-        locked = self.GetAccountLocked(verifiedUser)
-        if not locked:
-            print(f"Account unlocking passed for {self.tempUsername}")
-        else:
-            print(f"Account unlocking failed for {self.tempUsername}")
     
     def RegisterUser(self, username, password, permissions):
         userExists = self.VerifyUser(username)

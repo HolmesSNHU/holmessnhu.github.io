@@ -1,3 +1,17 @@
+# **************************************************
+# 
+# Filename: GenerateClientData.py
+# Version: 1.0.0
+# Purpose: Generate the client data for populating a database with fake-but-realistic financial data.
+# 
+# Written: November 2023
+# Programmer: Jason Holmes
+# Contact Information: jason.holmes3@snhu.edu
+# 
+# Current Known Issues:
+# 
+# **************************************************
+
 import pandas as pd
 import random
 import string
