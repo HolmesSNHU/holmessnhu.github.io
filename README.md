@@ -44,8 +44,8 @@ This artifact was chosen for two primary reasons. The first reason is that it is
 {% include youtube.html id="blLPAqMX2sw" %}
 
 The dashboard code for the original artifact is available here:
-* [The Dashboard - AnimalShelterDashboard.py](".original_artifact/AnimalShelterDashboard.py")
-* [The CRUD Layer - AnimalShelter.py](".original_artifact/AnimalShelter.py")
+* [The Dashboard - AnimalShelterDashboard.py](.original_artifact/AnimalShelterDashboard.py)
+* [The CRUD Layer - AnimalShelter.py](.original_artifact/AnimalShelter.py)
 
 This dashboard visualizes animal shelter patient outcome data in the Austin, TX region for a fictional client looking for an easy way to identify search-and-rescue animal training candidates.  outcomes provided by the original course, presenting a dashboard that allows the data to be filtered and sorted along with two visualizations of the data to help users understand it at a glance. However, much of the data presented is useless to the users who are looking for search-and-rescue training candidates. This is addressed using bespoke filters that have a specific set of requirements for each type of training that the user can call up at the click of the filter button, automatically displaying all of the relevant candidates.
 
@@ -124,17 +124,21 @@ To summarize my enhancements and the outcomes that they served beyond just the c
 ### Collaboration
 * Adequate documentation of data models, validation schema, and data generation processes so that others can understand the reasoning and the layout and quickly utilize them as well.
 * Extensive inline and header commenting to ensure each file clearly explains what it's for and how it's doing it to ensure future collaborators can jump right in with minimial acclimation time.
+
 ### Communication
 * Detailed code review examining the original artifact, reasoning through its inadequacies, and planning its enhancements
 * Extensive inline and header commenting designed to facilitate understanding through indirect communications
+
 ### Data Structures & Algorithms
 * Designing data models and database schema to reduce redundancy, improve the separation of concerns, and increase efficiency while achieving objectives
 * Identifying and implementing algorithms for password hashing, security token, and session ID generation
 * Caching where possible to minimize the number of database calls to improve efficiency
+
 ### Software Engineering
 * Redesigning the application from a dashboard and simple CRUD / database structure to include a robust security layer
 * Building a security layer to handle user authentication, session management, and role-based access control
 * Redesigning the dashboard to cleanly support a login layout that enables user login authentication and registration
+
 ### Security
 * Correcting security vulnerabilities by abstracting credential verification from hard-coded solution to a protected configuration file
 * Designing and implementing a login authentication system to enforce role-based access control to sensitive data
