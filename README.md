@@ -3,14 +3,16 @@
 My name is Jason Holmes. I currently live in Tokyo and have recently completed the Computer Science bachelor's program at Southern New Hampshire University (SNHU). I prepared this ePortfolio as part of my Computer Science capstone course with the intent to highlight my capabilities and my strengths. Through this I intend to seek a career in game development focusing on design and software engineering.
 
 ## Table of Contents
-* [Professional Self-Assessment](
-* Artifact Selection
-* Code Review
-* Project Structure and Planning
-* Artifact Enhancement 1: Software Engineering & Design
-* Artifact Enhancement 2: Data Structures & Algorithms
-* Artifact Enhancement 3: Databases
-* Course Outcomes
+* [Professional Self-Assessment](https://holmessnhu.github.io/#professional-self-assessment)
+* [Artifact Selection](https://holmessnhu.github.io/#artifact-selection)
+* [Code Review](https://holmessnhu.github.io/#code-review)
+* [Project Structure and Planning](https://holmessnhu.github.io/#project-structure-and-planning)
+    * [Defining the Database](https://holmessnhu.github.io/#defining-the-database)
+    * [Generating the Database](https://holmessnhu.github.io/#generating-the-database)
+* [Artifact Enhancement 1: Software Engineering & Design](https://holmessnhu.github.io/#)
+* [Artifact Enhancement 2: Data Structures & Algorithms](https://holmessnhu.github.io/#)
+* [Artifact Enhancement 3: Databases](https://holmessnhu.github.io/#)
+* [Course Outcomes](https://holmessnhu.github.io/#course-outcomes)
 
 ## Professional Self-Assessment
 My computer science journey began in high school taking Java-based Advanced Placement-certified courses in computer science and programming alongside basic HTML development. After high school, I supplemented this education with many years of self-teaching and learning while navigating through life, during which time I taught myself C++ and the higher level concepts behind object-oriented programming, then later C#, Python, and higher level web development concepts including the basics behind the technology stack of modern website design.
@@ -35,7 +37,7 @@ While I had the opportunity to choose a separate artifact for each of the three 
 
 This artifact was chosen for two primary reasons. The first reason is that it is essentially a full stack application that covers all three refinement categories, which would allow me to focus all of my attention on this project to really showcase my capabilities for the ePortfolio. The entirety of the CRUD layer and a good portion of the dashboard were written entirely by me, so it’s not so much about making a few minor changes to someone else’s code as it is expanding and enhancing something I’d written before, which lines up with the artifact expectations. The second major reason I chose this is because it is very similar to some tools I used in my previous job working in finance administration for a wealth management firm and I could easily envision how it could be adapted to serve that purpose in a bespoke, performant way. The end result of this project would make a fantastic foundation for an actual, usable application for my previous job.
 
-## Code Review (and Project Structure)
+## Code Review
 
 {% include youtube.html id="blLPAqMX2sw" %}
 
