@@ -44,8 +44,8 @@ This artifact was chosen for two primary reasons. The first reason is that it is
 {% include youtube.html id="blLPAqMX2sw" %}
 
 The dashboard code for the original artifact is available here:
-* Link to AnimalShelterDashboard
-* Link to AnimalShelterCRUD
+* [The Dashboard - AnimalShelterDashboard.py](".original_artifact/AnimalShelterDashboard.py")
+* [The CRUD Layer - AnimalShelter.py](".original_artifact/AnimalShelter.py")
 
 This dashboard visualizes animal shelter patient outcome data in the Austin, TX region for a fictional client looking for an easy way to identify search-and-rescue animal training candidates.  outcomes provided by the original course, presenting a dashboard that allows the data to be filtered and sorted along with two visualizations of the data to help users understand it at a glance. However, much of the data presented is useless to the users who are looking for search-and-rescue training candidates. This is addressed using bespoke filters that have a specific set of requirements for each type of training that the user can call up at the click of the filter button, automatically displaying all of the relevant candidates.
 
@@ -83,7 +83,7 @@ To implement a robust credential verification system, I would certainly need a l
 
 To do any of that, however, I would need to start with the login database. Identifying how that would look would allow me to build the rest of the security layer. To this end, I worked out a login validation schema for the MongoDB login database. allowing MongoDB to handle data validation and other concerns:
 
-* Link to validation schema
+* [Login Database Validation Schema.txt](.planning_documents/login_validation_schema.txt)
 
 While simple, the production of this schema helped me identify several of the factors that I would need to consider when building the security layer such as the hashing of passwords, role-based access, and session management--including failed login attempts, account locking, session tracking, and security tokens.
 
@@ -142,14 +142,18 @@ To summarize my enhancements and the outcomes that they served beyond just the c
 
 ## The Enhanced Artifact
 Finally, here is the enhanced artifact, split as it was to maintain separation of concerns:
-* Link to ClientDataDashboard - The Dashboard which handles the display and retrieval of data.
-* Link to ClientDataCRUD - The CRUD layer that interfaces between the dashboard and the database.
-* Link to ClientDataSecurity - The security layer that interfaces between the other components to handle user authentication and session management.
+* [Link to ClientDataDashboard.py](ClientDataDashboard.py) - The Dashboard which handles the display and retrieval of data.
+* [Link to ClientDataCRUD.py](ClientDataCRUD.py) - The CRUD layer that interfaces between the dashboard and the database.
+* [Link to ClientDataSecurity.py](ClientDataSecurity.py) - The security layer that interfaces between the other components to handle user authentication and session management.
 
 I also created a unit test driver for testing the security layer while it was being developed before the login system had been adequately developed, which can be found below:
-* Link to SecurityTestDriver
+* [Link to SecurityTestDriver.py](SecurityTestDriver.py)
 
-I’ve learned a great deal in the journey to get here, but one sticks most in my mind is how much more I’d like to do. As I worked, I made a note in the comments of the code marked by tags like <IMPROVEMENT> or <CORRECTION> of aspects that I felt could be improved in clear and certainly valuable ways, but which sat outside the scope of the current enhancement plan. With each feature I implemented, I felt that while I achieved many of the goals I had set out to achieve, new, more involved goals would appear and tempt me towards deviating from the plan to dig deeper onto a given feature and expand how robust or valuable it was. It was an ongoing struggle throughout the project to stay focused on the task at hand and not get lost in the weeds of maximizing the modularity of components or templating functions far beyond where they needed to go. Having a plan from the start was absolutely critical in keeping myself from meandering onto improvements that would be technically superior but not relevant to the task at hand, and while “planning is invaluable” is hardly a new concept, it’s certainly valuable to see it reinforced time after time.
+I’ve learned a great deal in the journey to get here, but one sticks most in my mind is how much more I’d like to do. As I worked, I made a note in the comments of the code marked by tags like <IMPROVEMENT> or <CORRECTION> of aspects that I felt could be improved in clear and certainly valuable ways, but which sat outside the scope of the current enhancement plan.
+
+With each feature I implemented, I felt that while I achieved many of the goals I had set out to achieve, new, more involved goals would appear and tempt me towards deviating from the plan to dig deeper onto a given feature and expand how robust or valuable it was. It was an ongoing struggle throughout the project to stay focused on the task at hand and not get lost in the weeds of maximizing the modularity of components or templating functions far beyond where they needed to go.
+
+Having a plan from the start was absolutely critical in keeping myself from meandering onto improvements that would be technically superior but not relevant to the task at hand, and while “planning is invaluable” is hardly a new concept, it’s certainly valuable to see it reinforced time after time.
 
 ## Creating the New Data
 The artifact enhancements described above would have been far more difficult without a set of practice data in the database to use during testing and verification. Using real data was obviously out of the question as it is sensitive, private data, so the economical route was to generate the data randomly but within the guidelines of what my experience would suggest to be realistic data that one might find in such records. This technically falls outside of the scope of the artifact enhancement project, but I felt it was an interesting enough process that it was worth detailing, so I included the process and methodology I followed below.
@@ -157,7 +161,7 @@ The artifact enhancements described above would have been far more difficult wit
 ### Defining the Database
 Before any meaningful enhancements to the original artifact could be made, I first needed data with which to populate the database for testing. I needed to generate fictional data that looked enough like legitimate data to make for valid testing material while still obviously fake. This is the best opportunity to consider the database design since having that in place prior to writing code for interacting with it will be critical in ensuring that I don't have a lot of extra work to do in the future. To that end, I developed the following data model for the database:
 
-* Link to Data Model
+* [Link to Data Model.txt](.planning_documents/db_data_model.txt)
 
 This model divides the required data into two main groups: clients and accounts. Accounts are further subdivided into another two groups: non-retirement accounts and retirement accounts. In both cases, this division is important to ensure that there is minimal redundancy in the data itself. Each account must have a client associated with it, so rather than having the client data attached to each account entry, that client data is separated into its own Clients data collection with all of the important client details stored there. Each account then has a valid client ID associated with it which links to that client record.
 
@@ -168,28 +172,28 @@ Non-retirement accounts, however, are not subject to these requirements and thus
 ### Generating the Database
 With the data model in place, the data needed to populate the database can now be generated. I did this using custom generation scripts for clients and accounts. Since accounts are dependent on extant clients, the data was generated in two steps: first the client data is generated and fed into the database, then exported and provided to the account generation script so that each account can be attached to a client.
 
-* Link to Client Data Script
+* [Link to GenerateClientData.py](.planning_documents/GenerateClientData.py)
 
 The client data generation process is fairly straightforward. From the US Census department I sourced the 500 most common first names as of 2022 and the 500 most common surnames as of 2010 and provided those as `names.txt` and `surnames.txt`, which are linked below:
 
-* Link to names
-* Link to surnames
+* [Link to names.txt](.planning_documents/names.txt)
+* [Link to surnames.txt](.planning_documents/surnames.txt)
 
 The generation script pulls the names from these files and stores it internally for later use. It defines a function to generate a random, unique social security number (SSN) made up of three letters followed by 6 numbers to accurately model an SSN but make it explicitly clear that it is not real data and is not tied to any real individual. It then takes an arbitrary number of clients to generate and creates the client data accordingly for each field. Each fictional client has their names are randomly selected from the names and surnames provided, a date of birth generated to place them between the ages of 18 and 80, an SSN generated using the previously defined function, and a field called 'last_review_date' given a date sometime within the last 500 days. This field is used to calculate the number of days since their last review with the financial advisor, which is an important element in the US financial industry's regulation of wealth management firms and therefore an important aspect of finance administration.
 
 This data is then output into a .csv file for later use. The one I used for this project is available below:
 
-* Link to client_data.csv
+* [Link to client_data.csv](.planning_documents/client_data.csv)
 
 Once the client data has been generated, it is imported into the MongoDB database that has been set up with the necessary data validation restrictions. Each client record is then exported again; this step is critical because once the data has been imported, MongoDB assigns it a client_id which will be used to tie each account to the owning client.
 
-* Link to clients_export.csv
-* Link to Account Data Script
+* [Link to clients_export.csv](.planning_documents/clients_export.csv)
+* [Link to GenerateAccountData.py](.planning_documents/GenerateAccountData.py)
 
 The script imports the client data as it was exported from the database for later use during the generation process. It then creates a function to take that data and generate an arbitrary number of accounts associated with those clients. It sets a few other arbitrary limits to help the data appear to be more realistic such as a maximum number of accounts per client and a percentage of the accounts to be made as retirement accounts.
 
 Then it generates the data for each account. It chooses an eligible client and randomly determines whether it's a retirement account or not based on the weight provided previously. It then chooses a sub-type for the account ('Rollover IRA', 'TOD Account', etc.) based on the type and applies a nickname with that information and the client's name to make it a little more realistic. It then generates several account statistics randomly within certain ranges to help improve the data and differentiate it adequately and applies an RMD amount to the relevant accounts. These are all then output into a .csv file for database import. The one I used for this project is provided below:
 
-* Link to account_data.csv
+* [Link to account_data.csv](.planning_documents/account_data.csv)
 
 With the data now ready, everything would be in place to begin the artifact enhancements.
