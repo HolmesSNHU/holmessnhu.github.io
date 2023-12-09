@@ -47,7 +47,7 @@ The dashboard code for the original artifact is available here:
 * [The Dashboard - AnimalShelterDashboard.py](.original_artifact/AnimalShelterDashboard.py)
 * [The CRUD Layer - AnimalShelter.py](.original_artifact/AnimalShelter.py)
 
-This dashboard visualizes animal shelter patient outcome data in the Austin, TX region for a fictional client looking for an easy way to identify search-and-rescue animal training candidates.  outcomes provided by the original course, presenting a dashboard that allows the data to be filtered and sorted along with two visualizations of the data to help users understand it at a glance. However, much of the data presented is useless to the users who are looking for search-and-rescue training candidates. This is addressed using bespoke filters that have a specific set of requirements for each type of training that the user can call up at the click of the filter button, automatically displaying all of the relevant candidates.
+This dashboard visualizes animal shelter patient outcome data in the Austin, TX region for a fictional client looking for an easy way to identify search-and-rescue animal training candidates. The dashboard allows the data to be filtered and sorted and provides two visualizations of the displayed data to help users understand it at a glance. However, much of the patient outcome data presented is useless to the users who are looking for search-and-rescue training candidates. This is addressed using bespoke filters that have a specific set of requirements for each type of training that the user can call up at the click of the filter button, automatically displaying all of the relevant candidates.
 
 The dashboard pulls the data stored in a MongoDB database through the use of a bespoke Python-based CRUD (Create, Read, Update, Delete) layer that enables interaction with the database using PyMongo, a framework that provides the necessary functions. This layer accepts requests from the dashboard and translates them into PyMongo requests, which apply them to the MongoDB database to fetch and change data. The dashboard then generates the HTML for the page and displays it using a callback system for updating those elements with the new data. MongoDB implements a role-based access control system to ensure that only valid users can access the data, which this dashboard bypasses using hard-coded administrator credentials.
 
@@ -123,7 +123,7 @@ To summarize my enhancements and the outcomes that they served beyond just the c
 
 ### Collaboration
 * Adequate documentation of data models, validation schema, and data generation processes so that others can understand the reasoning and the layout and quickly utilize them as well.
-* Extensive inline and header commenting to ensure each file clearly explains what it's for and how it's doing it to ensure future collaborators can jump right in with minimial acclimation time.
+* Extensive inline and header commenting to ensure each file clearly explains what it's for and how it's doing it to ensure future collaborators can jump right in with minimal acclimation time.
 
 ### Communication
 * Detailed code review examining the original artifact, reasoning through its inadequacies, and planning its enhancements
