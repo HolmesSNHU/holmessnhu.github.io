@@ -7,11 +7,11 @@ My name is Jason Holmes. I currently live in Tokyo and have recently completed t
 * [Artifact Selection](https://holmessnhu.github.io/#artifact-selection)
 * [Code Review](https://holmessnhu.github.io/#code-review)
 * [Project Structure and Planning](https://holmessnhu.github.io/#project-structure-and-planning)
-* [Artifact Enhancement 1: Software Engineering & Design](https://holmessnhu.github.io/#)
-* [Artifact Enhancement 2: Data Structures & Algorithms](https://holmessnhu.github.io/#)
-* [Artifact Enhancement 3: Databases](https://holmessnhu.github.io/#)
-    * [Login Database](https://holmessnhu.github.io/#login-database)
+* [Artifact Enhancement 1: Software Engineering & Design](https://holmessnhu.github.io/#enhancement-category-1-software-engineering--design)
+* [Artifact Enhancement 2: Data Structures & Algorithms](https://holmessnhu.github.io/#enhancement-category-2-data-structures--algorithms)
+* [Artifact Enhancement 3: Databases](https://holmessnhu.github.io/#enhancement-category-3-databases)
 * [Course Outcomes](https://holmessnhu.github.io/#course-outcomes)
+* [The Enhanced Artifact](https://holmessnhu.github.io#the-enhanced-artifact)
 * [Creating the New Data](https://holmessnhu.github.io/#creating-the-new-data)
     * [Defining the Database](https://holmessnhu.github.io/#defining-the-database)
     * [Generating the Database](https://holmessnhu.github.io/#generating-the-database)
@@ -59,28 +59,26 @@ Finally, the security present in the dashboard as-is would be considered woefull
 
 However, before the enhancements could proceed at a reasonable pace, I would need to generate suitable data to populate the database. This would, in turn, require the consideration of that database, how the data would get used, and a variety of other concerns. Most of this falls outside of the scope of the artifact enhancement project so I'll detail that in another section [at the end of the page here.](https://holmessnhu.github.io/#creating-the-new-data)
 
-
-
 ## Enhancement Category 1: Software Engineering & Design
 The original artifact is essentially a full stack application providing both back-end and front-end technology layers to create a complete product. While this does make it an ideal candidate for selection to cover every category of potential enhancement, it also means that every enhancement is intrinsically linked to every other enhancement. For example, to enhance this artifact at all, the first step must be to have adequate data for use in testing which means I need to consider the final design of the application and how that data will be organized and used to decide how it should be organized. The details on how this was done are described at the end of the page as linked in the previous section, but this demonstrates how all three of the categories are touched on before the enhancements have even begun.
 
-# Software Engineering
+### Software Engineering
 This holistic consideration is intrinsic to the nature of software engineering & design. Designing a solution to a problem is made much simpler once you understand the entirety of that problem, after which it becomes a matter of applying the necessary understanding of software engineering to take it from plan to product. For this purpose, I determined the target feature set for the dashboard and identified what all would be necessary to achieve that and drafted a basic flowchart:
 
 ![image](https://github.com/HolmesSNHU/holmessnhu.github.io/assets/120333685/c330dff4-b596-4478-beaf-d1dbbff381f1)
 
 One issue I wanted to address with my enhancements was to correct an oversight I felt the original dashboard had: hard-coded login credentials. This is exceptionally bad practice and in a production environment it would be incredibly insecure and a nightmare for maintainability. Any change in the server organization, connection details, even a port changing would require that the entire application be brought down, updated, tested, and then deployed. A web application wants to minimize its downtime, not extend it unnecessarily, so I also want to set up a configuration system that will move the sensitive credential information to a separate configuration file that can be more readily secured and, in doing so, enable future development to more easily expand the maintenance functionality to make configuration updates smoother and require less downtime. 
 
-# Security
+### Security
 The first and foremost of the concerns identified by the design flowchart was the security issue represented by the hard-coded credentials. Moving them to a configuration file would only be one step; I would also need to completely replace their presence with a robust security layer to ensure that the data could not be accessed without valid login credentials. This would require implementing logins and the underlying systems to support that, which would require a fundamental rewrite of how the dashboard displays everything in the first place. Then underneath that, login management, authentication and verification, and session management would be necessary. On the plus side, designing these systems properly should allow multiple users to interact with the data simultaneously. In a production environment user registration would be handled separately from login verification, but for demonstration purposes I built it into the login system to allow for immediate registration. 
 
-# Communication
+### Communication
 Throughout the writing of all of these systems, adequate documentation and code commenting, including file headers with the details for the purpose and author of each file and inline comments describing the how and why of everything happening serves a critical purpose in the communication with development peers past, present, and future. Furthermore, building these systems with an eye towards the user requirements pulled from my experience on the user-side of applications like this one also support the communication outcome.
 
 ## Enhancement Category 2: Data Structures & Algorithms
 Implementing a login system by itself is its own challenge, but ensuring it is adequately secure is another entirely. For the enhancements I wanted to make, it wouldn't be enough to have a table of usernames and passwords. That would just be trading one poor security practice for another, and that wouldn't be enough for what I wanted to achieve. 
 
-# Software Engineering
+### Software Engineering
 To implement a robust credential verification system, I would certainly need a login database to contain the credentials to be verified against. I would also need to build a session management system to ensure that the user at the controls remains the user that was verified. This would involve building such a login database from scratch, hashing passwords with cryptographic algorithms, verifying them securely against one another, and generating and managing active user sessions that continually verify themselves with a security token and session IDs generated at random. 
 
 To do any of that, however, I would need to start with the login database. Identifying how that would look would allow me to build the rest of the security layer. To this end, I worked out a login validation schema for the MongoDB login database. allowing MongoDB to handle data validation and other concerns:
@@ -89,7 +87,7 @@ To do any of that, however, I would need to start with the login database. Ident
 
 While simple, the production of this schema helped me identify several of the factors that I would need to consider when building the security layer such as the hashing of passwords, role-based access, and session management--including failed login attempts, account locking, session tracking, and security tokens.
 
-# Data Structures and Algorithms
+### Data Structures and Algorithms
 There were three elements that I would need but which I would have to handle individually: session IDs, security token generation, and password hashing. A session ID needs to uniquely identify a user after they've logged in and allow the server to track their status, so not much is needed here; adequate randomness and uniqueness is all that is needed, so making use of Python's universal unique identifier (UUID) algorithm to generate an ID for each session and building the necessary management systems for tracking active sessions was all that was required. Security tokens validate that the user has successfully passed credential validation and grant access to the resources available to their set of permissions, so the complexity with these has more to do with the management systems than generating the token. The token itself is generated using the Python secrets library to ensure it is an adequately random token. These two systems serve similar functionality but provide important distinctions allowing them to support one another; however, a different design may have chosen to merge the two into a single system.
 
 Hashing passwords is a somewhat more thorny topic. Passwords cannot simply be stored in a database to be compared against as doing so is bad practice and extremely insecure--though, you do still see companies being caught doing exactly this from time to time. To avoid this, you need to alter the password the user provides in a way that you can still validate the password the user inputs when logging in, but so that neither you nor anyone else who gets access to your database can tell what that password actually is. By running it through a cryptographic algorithm, you can produce a unique result that no other input will produce but which cannot be reversed to get the original value. If anyone gets access to the database, all they will find for passwords is a long series of nonsense characters that can't be used for anything.
@@ -98,7 +96,7 @@ The difficult here is striking the right balance between security and optimizati
 
 Additionally, many of the little details of my enhancement work have been focused on balancing the efficiency of pulling data from the database when needed and caching it in the application when possible, as evidenced by my usage of the VerifyUser function pulling the login record for each user when it verifies them and using that data elsewhere for efficiency.
 
-# Security
+### Security
 In addition to the above concerns which are all heavily focused on security as well, the password hashing, session management, and login verification systems I added are all focused on mitigating security vulnerabilities before they happen. Furthermore, they’re designed with potential expansion in mind; for example, the password hashing functionality can easily be expanded with support for the salting of the hashed data. An expanded awareness and implementation of error handling also further reinforces the security mindset by hedging against potential threats to the stability of the application.
 
 ## Enhancement Category 3: Databases
@@ -106,38 +104,38 @@ The new financial data dashboard would have to throw out everything from the ani
 
 One of the challenges I faced with enhancing the databases portion of this project was that it was already utilizing MongoDB as part of its technology stack. At first blush, I thought that might be as good as it got, but as I dug into the process of reinforcing the security aspects of the dashboard I realized how much more could be done for the database to reinforce it for public use and how precariously it was situated on ensuring that everything went exactly as it was meant to go. 
 
-# Collaboration
+### Collaboration
 My work in expanding permissions and access control allows for multiple users to work simultaneously on data stored in a single database while maintaining security and integrity of that data, improving collaboration prospects for users. Adequate documentation on the development side improves the collaboration prospects for developers as well.
 
-# Data Structures / Software Engineering
+### Data Structures / Software Engineering
 When I transitioned the database to use financial data, I improved data redundancy by splitting the data between two collections: one for client records and one for account records. Clients each have a client ID and every account is tied to an existing client through this ID. This allows the data to be kept separately while the dashboard can query both collections and merge the records around the client ID. This also allows for the simple inclusion of derived data. When I began looking into establishing the login database, I learned about and implemented a validation schema in the database, ensuring that a user can only be registered if each data field passes some basic data verification. In addition to assisting with securing the database, this also helps to make it more robust and resistant to costly data errors. Designing the database data model, the validation schema, implementing efficient access control and user authentication processes all work together to serve these outcomes.
 
-# Security
+### Security
 The security layer I wrote would tie everything together into a more secure package by creating the login database and using it to validate users before granting them access to the data in the clients and accounts databases. In addition to the security benefits, this would allow the dashboard to serve many different users instead of just one. Once properly hosted, the app will manage login authentication, verification, and session management for multiple users. User registration is implemented through the dashboard currently for demonstration purposes only, since privileged user accounts should be set up through a more involved process. These inclusions ensure that a user must have the requisite permissions level before they can access sensitive financial data, which represents a critical step in ensuring the security of the database.
 
 A vast portion of my enhancements across the entire project were focused on improving the security and reliability of the system as a whole, given how many of them have been centered around reinforcing and improving the security of the database to allow for regulatory-adherent storage of sensitive information. From shifting server credentials out of the application code to implementing a security layer to handle user authentication, session management, and user account handling, nearly every enhancement has been focused on security. While all of the data in the databases currently has been generated pseudo-randomly, this near-obsession with a security focus stands as a proof of concept for the potential use with legitimate client financial data.
 
-# Communications
+### Communications
 Documenting all of the changes to the database, its access control mechanisms, new access roles, and dramatically expanding the commenting and console messaging of the application stands as an endorsement towards the communications outcome—though admittedly, more can be done here to truly make it usable for anyone and not just trained or familiar personnel.
 
 ## Course Outcomes
 To summarize my enhancements and the outcomes that they served beyond just the category of those enhancements, here is a quick breakdown for convenience:
 
-# Collaboration
+### Collaboration
 * Adequate documentation of data models, validation schema, and data generation processes so that others can understand the reasoning and the layout and quickly utilize them as well.
 * Extensive inline and header commenting to ensure each file clearly explains what it's for and how it's doing it to ensure future collaborators can jump right in with minimial acclimation time.
-# Communication
+### Communication
 * Detailed code review examining the original artifact, reasoning through its inadequacies, and planning its enhancements
 * Extensive inline and header commenting designed to facilitate understanding through indirect communications
-# Data Structures & Algorithms
+### Data Structures & Algorithms
 * Designing data models and database schema to reduce redundancy, improve the separation of concerns, and increase efficiency while achieving objectives
 * Identifying and implementing algorithms for password hashing, security token, and session ID generation
 * Caching where possible to minimize the number of database calls to improve efficiency
-# Software Engineering
+### Software Engineering
 * Redesigning the application from a dashboard and simple CRUD / database structure to include a robust security layer
 * Building a security layer to handle user authentication, session management, and role-based access control
 * Redesigning the dashboard to cleanly support a login layout that enables user login authentication and registration
-# Security
+### Security
 * Correcting security vulnerabilities by abstracting credential verification from hard-coded solution to a protected configuration file
 * Designing and implementing a login authentication system to enforce role-based access control to sensitive data
 * Managing session IDs and security tokens to help minimize the chance of unauthorized personnel gaining access to sensitive data
